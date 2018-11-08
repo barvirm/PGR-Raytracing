@@ -1,1 +1,1 @@
-# GPUEngine-Effects-DemoApp
+# PGR-PROJECT Raytracing
