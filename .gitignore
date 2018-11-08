@@ -1,0 +1,11 @@
+CMakeCache.txt
+out
+CMakeFiles
+DemoApp
+DemoApp.cbp
+DemoApp_autogen
+Makefile
+cmake_install.cmake
+compile_commands.json
+build
+.vscode
