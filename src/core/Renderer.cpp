@@ -79,25 +79,19 @@ bool msg::Renderer::initRaytracingVT() {
     std::cout << "Renderer initRaytracingVT" << std::endl;
 
     std::string shaderDir(APP_RESOURCES"/shaders/");
-    /* TESTING */
-    auto vs(std::make_shared<ge::gl::Shader>(GL_VERTEX_SHADER  , util::loadFile(shaderDir + "triag_vs.glsl")));
-    auto fs(std::make_shared<ge::gl::Shader>(GL_FRAGMENT_SHADER, util::loadFile(shaderDir + "red_fs.glsl")));
-    /***********/
-    auto vs_d(std::make_shared<ge::gl::Shader>(GL_VERTEX_SHADER, util::loadFile(shaderDir + "texture_quad_vs.glsl")));
-    auto fs_d(std::make_shared<ge::gl::Shader>(GL_FRAGMENT_SHADER, util::loadFile(shaderDir + "texture_quad_fs.glsl")));
+    auto vs(std::make_shared<ge::gl::Shader>(GL_VERTEX_SHADER, util::loadFile(shaderDir + "texture_quad_vs.glsl")));
+    auto fs(std::make_shared<ge::gl::Shader>(GL_FRAGMENT_SHADER, util::loadFile(shaderDir + "texture_quad_fs.glsl")));
     
     auto cs(std::make_shared<ge::gl::Shader>(GL_COMPUTE_SHADER , util::loadFile(shaderDir + "raytracing_cs.glsl")));
 
 
-    auto program(std::make_shared<ge::gl::Program>(vs, fs));
     auto computeShader(std::make_shared<ge::gl::Program>(cs));
-    auto drawQuad(std::make_shared<ge::gl::Program>(vs_d, fs_d));
+    auto drawProgram(std::make_shared<ge::gl::Program>(vs, fs));
   
     auto raytracingVT(std::make_unique<msg::RaytracingTechnique>());
     raytracingVT->gl = _gl;
-    raytracingVT->program = program;
     raytracingVT->computeShader = computeShader;
-    raytracingVT->drawProgram = drawQuad;
+    raytracingVT->drawProgram = drawProgram;
     raytracingVT->viewport = _viewport;
     raytracingVT->orbitCamera = orbitCamera;
     raytracingVT->perspectiveCamera = perspectiveCamera;
@@ -120,5 +114,5 @@ void msg::Renderer::drawVT() {
     for(auto &vt : _visualizationTechniques) {
         vt->draw();
     }
-    std::cout << orbitCamera->getDistance() << std::endl;
+    // std::cout << orbitCamera->getDistance() << std::endl;
 }

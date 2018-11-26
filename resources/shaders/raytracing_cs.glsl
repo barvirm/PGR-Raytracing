@@ -1,11 +1,7 @@
 #version 430 core
 
 layout(binding = 0, rgba32f) uniform image2D framebuffer;
-
-layout(std140, binding = 3) buffer debug {
-    vec4 pout[];
-};
-
+layout(std140, binding = 3) buffer debug { vec4 debug_out[]; };
 
 uniform vec3 eye;
 uniform vec3 ray00;
@@ -22,9 +18,9 @@ struct box {
 #define NUM_BOXES 2
 
 const box boxes[] = {
-  /* The ground */
+  // The ground 
   {vec3(-5.0, -0.1, -5.0), vec3(5.0, 0.0, 5.0)},
-  /* Box in the middle */
+  // Box in the middle 
   {vec3(-0.5, 0.0, -0.5), vec3(0.5, 1.0, 0.5)}
 };
 
@@ -67,16 +63,16 @@ vec4 trace(vec3 origin, vec3 dir) {
   return vec4(0.0, 0.0, 0.0, 1.0);
 }
 
+
 layout (local_size_x = 16, local_size_y = 8) in;
 void main(void) {
-  ivec2 pix = ivec2(gl_GlobalInvocationID.xy);
-  pout[gl_GlobalInvocationID.x] = vec4(pix, 0,0);
-  ivec2 size = imageSize(framebuffer);
-  if (pix.x >= size.x || pix.y >= size.y) {
-    return;
-  }
-  vec2 pos = vec2(pix) / vec2(size.x - 1, size.y - 1);
-  vec3 dir = mix(mix(ray00, ray01, pos.y), mix(ray10, ray11, pos.y), pos.x);
-  vec4 color = trace(eye, dir);
-  imageStore(framebuffer, pix, color);
+    ivec2 pix = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(framebuffer);
+    debug_out[gl_GlobalInvocationID.x] = vec4(pix, size);
+    if (pix.x >= size.x || pix.y >= size.y) { return; }
+     vec2 pos = vec2(pix) / vec2(size.x - 1, size.y - 1);
+     vec3 dir = mix(mix(ray00, ray01, pos.y), mix(ray10, ray11, pos.y), pos.x);
+     vec4 color = trace(eye, dir);
+     imageStore(framebuffer, pix, color);
+    // imageStore(framebuffer, pix, vec4(1));
 }

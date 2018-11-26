@@ -38,7 +38,7 @@ namespace msg {
         std::shared_ptr<ge::gl::VertexArray> VAO;
         glm::vec3 getRay(float x, float y,const glm::vec3 &eye);
 
-        int tex;
+        unsigned int tex;
 
         std::string to_string(const glm::vec3 &d);
 
