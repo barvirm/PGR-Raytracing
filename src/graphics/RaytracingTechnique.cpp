@@ -8,20 +8,29 @@
 #include <geGL/geGL.h>
 
 void msg::RaytracingTechnique::init() {
-    texture = std::make_shared<ge::gl::Texture>(GL_TEXTURE_2D, GL_RGBA32F, 0 , viewport->x, viewport->y);
-
     gl->glGenTextures(1, &tex);
     gl->glBindTexture(GL_TEXTURE_2D, tex);
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 1000, 800, 0, GL_RGBA, GL_FLOAT, NULL);
+    gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, viewport->x, viewport->y, 0, GL_RGBA, GL_FLOAT, NULL);
     gl->glBindTexture(GL_TEXTURE_2D, 0);
-    std::array<float, 12> quad{-1.0f, -1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, -1.0f, 1.0f, -1.0f, -1.0f};
+
+    std::array<glm::vec2, 8> quad {
+        glm::vec2( 1.0f, -1.0f),
+        glm::vec2(-1.0f, -1.0f),
+        glm::vec2( 1.0f,  1.0f),
+        glm::vec2(-1.0f,  1.0f)
+    };
 
     auto FT = gl->getFunctionTable();
-    auto quad_buff = std::make_shared<ge::gl::Buffer>(FT, sizeof(float) * quad.size(), quad.data());
+    auto quad_buff = std::make_shared<ge::gl::Buffer>(FT, sizeof(glm::vec2) * quad.size(), quad.data());
     VAO = std::make_shared<ge::gl::VertexArray>(FT);
     VAO->addAttrib(quad_buff, 0, 2, GL_FLOAT);
+
+    int wgl[3];
+    gl->glGetProgramiv(computeShader->getId(), GL_COMPUTE_WORK_GROUP_SIZE, wgl); 
+    workingGroupLayout = glm::vec3(wgl[0], wgl[1], wgl[2]);
+    std::cout << to_string(workingGroupLayout) << std::endl;
 }
 
 void msg::RaytracingTechnique::draw() {
@@ -29,11 +38,18 @@ void msg::RaytracingTechnique::draw() {
     drawProgram->use();
     VAO->bind();
     gl->glBindTexture(GL_TEXTURE_2D, tex);
-    // texture->bind(0);
-    gl->glDrawArrays(GL_TRIANGLES, 0, 6);
+    gl->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 }
 std::string msg::RaytracingTechnique::to_string(const glm::vec3 &d) {
+    std::string res = "";
+    res += std::to_string(d.x) + " ";
+    res += std::to_string(d.y) + " ";
+    res += std::to_string(d.z);
+    return res;
+}
+
+std::string msg::RaytracingTechnique::to_string(const glm::ivec3 &d) {
     std::string res = "";
     res += std::to_string(d.x) + " ";
     res += std::to_string(d.y) + " ";
@@ -59,25 +75,29 @@ void msg::RaytracingTechnique::update() {
     computeShader->set3fv("ray10", glm::value_ptr(getRay( 1, -1, cameraPosition)));
     computeShader->set3fv("ray11", glm::value_ptr(getRay( 1,  1, cameraPosition)));
 
+    // TODO try to do without texture just with SSBO
+    std::cout << viewport->x << " " << viewport->y << std::endl;
     auto debug(std::make_shared<ge::gl::Buffer>(gl->getFunctionTable(), sizeof(glm::vec4) * 100));
 
-    //texture->bindImage(0, 0, GL_RGBA32F, GL_WRITE_ONLY, GL_FALSE, 0);
     gl->glBindImageTexture(0, tex, 0, false, 0, GL_WRITE_ONLY, GL_RGBA32F);
     debug->bindBase(GL_SHADER_STORAGE_BUFFER, 3);
 
-    gl->glDispatchCompute(100,100,1);
+    auto roundUpToPowerOfTwo = [](int x) -> int { 
+        x--;
+        x |= x >> 1;
+        x |= x >> 2;
+        x |= x >> 4;
+        x |= x >> 8;
+        x |= x >> 16;
+        return ++x;
+    };
+
+    gl->glDispatchCompute(
+        roundUpToPowerOfTwo(viewport->x) / workingGroupLayout.x,
+        roundUpToPowerOfTwo(viewport->y) / workingGroupLayout.y,
+        1
+    );
     gl->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-    //gl->glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-
-    /*
-    debug->bindBase(GL_SHADER_STORAGE_BUFFER, 3);
-    auto *dbg = static_cast<glm::vec4 *>(gl->glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
-    for(int i= 0; i < 10; ++i) {
-        std::cout << dbg[i].x << " " << dbg[i].y << " " << dbg[i].z << " " << dbg[i].w << std::endl;
-    }
-    */
-
-    //texture->bindImage(0, 0, GL_RGBA32F, GL_READ_WRITE, GL_FALSE, 0);
 }
 
 glm::vec3 msg::RaytracingTechnique::getRay(float x, float y,const glm::vec3 &eye) {
