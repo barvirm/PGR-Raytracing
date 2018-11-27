@@ -11,6 +11,9 @@ void msg::RaytracingTechnique::init() {
     //texture = std::make_shared<ge::gl::Texture>(gl->getFunctionTable(), GL_TEXTURE_2D, GL_RGBA32F, 0, viewport->x, viewport->y);
 
     //texture->setData2D(NULL, GL_RGBA, GL_FLOAT, 0, GL_TEXTURE_2D, 0, 0, viewport->x, viewport->y);
+    // FIXME this should work
+
+
     gl->glGenTextures(1, &tex);
     gl->glBindTexture(GL_TEXTURE_2D, tex);
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
