@@ -8,6 +8,9 @@
 #include <geGL/geGL.h>
 
 void msg::RaytracingTechnique::init() {
+    //texture = std::make_shared<ge::gl::Texture>(gl->getFunctionTable(), GL_TEXTURE_2D, GL_RGBA32F, 0, viewport->x, viewport->y);
+
+    //texture->setData2D(NULL, GL_RGBA, GL_FLOAT, 0, GL_TEXTURE_2D, 0, 0, viewport->x, viewport->y);
     gl->glGenTextures(1, &tex);
     gl->glBindTexture(GL_TEXTURE_2D, tex);
     gl->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -15,22 +18,13 @@ void msg::RaytracingTechnique::init() {
     gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, viewport->x, viewport->y, 0, GL_RGBA, GL_FLOAT, NULL);
     gl->glBindTexture(GL_TEXTURE_2D, 0);
 
-    std::array<glm::vec2, 8> quad {
-        glm::vec2( 1.0f, -1.0f),
-        glm::vec2(-1.0f, -1.0f),
-        glm::vec2( 1.0f,  1.0f),
-        glm::vec2(-1.0f,  1.0f)
-    };
-
-    auto FT = gl->getFunctionTable();
-    auto quad_buff = std::make_shared<ge::gl::Buffer>(FT, sizeof(glm::vec2) * quad.size(), quad.data());
-    VAO = std::make_shared<ge::gl::VertexArray>(FT);
-    VAO->addAttrib(quad_buff, 0, 2, GL_FLOAT);
+    VAO = std::make_shared<ge::gl::VertexArray>(gl->getFunctionTable());
+    
 
     int wgl[3];
     gl->glGetProgramiv(computeShader->getId(), GL_COMPUTE_WORK_GROUP_SIZE, wgl); 
     workingGroupLayout = glm::vec3(wgl[0], wgl[1], wgl[2]);
-    std::cout << to_string(workingGroupLayout) << std::endl;
+    //std::cout << to_string(workingGroupLayout) << std::endl;
 }
 
 void msg::RaytracingTechnique::draw() {
@@ -38,7 +32,8 @@ void msg::RaytracingTechnique::draw() {
     drawProgram->use();
     VAO->bind();
     gl->glBindTexture(GL_TEXTURE_2D, tex);
-    gl->glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    // texture->bind(0);
+    gl->glDrawArrays(GL_POINTS, 0, 1);
 
 }
 std::string msg::RaytracingTechnique::to_string(const glm::vec3 &d) {
@@ -76,9 +71,11 @@ void msg::RaytracingTechnique::update() {
     computeShader->set3fv("ray11", glm::value_ptr(getRay( 1,  1, cameraPosition)));
 
     // TODO try to do without texture just with SSBO
-    std::cout << viewport->x << " " << viewport->y << std::endl;
+    //std::cout << viewport->x << " " << viewport->y << std::endl;
     auto debug(std::make_shared<ge::gl::Buffer>(gl->getFunctionTable(), sizeof(glm::vec4) * 100));
 
+
+    // texture->bindImage(0, 0, GL_RGBA32F, GL_WRITE_ONLY, false, 0);
     gl->glBindImageTexture(0, tex, 0, false, 0, GL_WRITE_ONLY, GL_RGBA32F);
     debug->bindBase(GL_SHADER_STORAGE_BUFFER, 3);
 

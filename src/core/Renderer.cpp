@@ -79,20 +79,21 @@ bool msg::Renderer::initRaytracingVT() {
     std::cout << "Renderer initRaytracingVT" << std::endl;
 
     std::string shaderDir(APP_RESOURCES"/shaders/");
-    auto vs(std::make_shared<ge::gl::Shader>(GL_VERTEX_SHADER, util::loadFile(shaderDir + "texture_quad_vs.glsl")));
+    auto vs(std::make_shared<ge::gl::Shader>(GL_VERTEX_SHADER  , util::loadFile(shaderDir + "texture_quad_vs.glsl")));
     auto fs(std::make_shared<ge::gl::Shader>(GL_FRAGMENT_SHADER, util::loadFile(shaderDir + "texture_quad_fs.glsl")));
-    
+    auto gs(std::make_shared<ge::gl::Shader>(GL_GEOMETRY_SHADER, util::loadFile(shaderDir + "texture_quad_gs.glsl")));
+
     auto cs(std::make_shared<ge::gl::Shader>(GL_COMPUTE_SHADER , util::loadFile(shaderDir + "raytracing_cs.glsl")));
 
 
     auto computeShader(std::make_shared<ge::gl::Program>(cs));
-    auto drawProgram(std::make_shared<ge::gl::Program>(vs, fs));
+    auto drawProgram(std::make_shared<ge::gl::Program>(vs, gs, fs));
   
     auto raytracingVT(std::make_unique<msg::RaytracingTechnique>());
     raytracingVT->gl = _gl;
     raytracingVT->computeShader = computeShader;
     raytracingVT->drawProgram = drawProgram;
-    raytracingVT->viewport = _viewport;
+    raytracingVT->viewport = _viewport; // TODO need resize texture on change viewport
     raytracingVT->orbitCamera = orbitCamera;
     raytracingVT->perspectiveCamera = perspectiveCamera;
     raytracingVT->init();
