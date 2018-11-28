@@ -75,6 +75,10 @@ void msg::Renderer::setupCamera() {
     perspectiveCamera->setAspect(1000.0f / 800.0f);
 }
 
+void msg::Renderer::setScene(std::shared_ptr<msg::Scene> &_scene) {
+    scene = _scene;
+}
+
 bool msg::Renderer::initRaytracingVT() {
     std::cout << "Renderer initRaytracingVT" << std::endl;
 
@@ -93,9 +97,10 @@ bool msg::Renderer::initRaytracingVT() {
     raytracingTechnique->gl = _gl;
     raytracingTechnique->computeShader = computeShader;
     raytracingTechnique->drawProgram = drawProgram;
-    raytracingTechnique->viewport = _viewport; // TODO need resize texture on change viewport
+    raytracingTechnique->viewport = _viewport;
     raytracingTechnique->orbitCamera = orbitCamera;
     raytracingTechnique->perspectiveCamera = perspectiveCamera;
+    raytracingTechnique->scene = scene;
     raytracingTechnique->init();
 
     return true;
