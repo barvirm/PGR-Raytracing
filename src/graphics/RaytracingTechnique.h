@@ -27,6 +27,7 @@ namespace msg {
         void init();
         void update();
         void draw();
+        void onViewportChanged();
 
         std::shared_ptr<ge::gl::Program> program;
         std::shared_ptr<ge::gl::Program> computeShader;

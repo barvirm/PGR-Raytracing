@@ -6,16 +6,13 @@
 #include <geUtil/OrbitCamera.h>
 #include <geUtil/PerspectiveCamera.h>
 
-
-#include <graphics/RaytracingTechnique.h>
 #include <util/ShaderReader.h>
-
-
 
 msg::Renderer::Renderer(QObject *parent) :
     GERendererBase(parent),
     orbitCamera(std::make_shared<ge::util::OrbitCamera>()),
-    perspectiveCamera(std::make_shared<ge::util::PerspectiveCamera>())
+    perspectiveCamera(std::make_shared<ge::util::PerspectiveCamera>()),
+    _inicializedVT(false)
 {
     std::cout << "Renderer ctor" << std::endl;
     setupCamera();
@@ -25,10 +22,16 @@ void msg::Renderer::onViewportChanged() {
     std::cout << "onViewportChanged" << std::endl;
     _gl->glViewport(0, 0, _viewport->x, _viewport->y);
     perspectiveCamera->setAspect(_viewport->x / _viewport->y);
+    
+    if (_inicializedVT) {
+        raytracingTechnique->onViewportChanged();
+    }
 }
 
 void msg::Renderer::onContextCreated() {
-    initVT();
+    std::cout << "Renderer onContextCreated -> initVT" << std::endl;
+    initRaytracingVT();
+    _inicializedVT = true;
 }
 
 
@@ -57,16 +60,13 @@ void msg::Renderer::update() {
         _sceneToProcess = false;
        
     }
-    for(auto &vt : _visualizationTechniques) {
-        vt->update();
-    }
+
+    raytracingTechnique->update();
 }
 
 void msg::Renderer::setupCamera() {
     std::cout << "Renderer setupCamera" << std::endl;
     orbitCamera->setDistance(10.f);
-    //orbitCamera->setYAngle(3.1415f/1.2f);
-    //orbitCamera->setXAngle(3.1415f/6.5f);
     orbitCamera->setFocus(glm::vec3(0.0f, 0.5f, 0.0f));
 
     perspectiveCamera->setNear(1.f);
@@ -89,31 +89,19 @@ bool msg::Renderer::initRaytracingVT() {
     auto computeShader(std::make_shared<ge::gl::Program>(cs));
     auto drawProgram(std::make_shared<ge::gl::Program>(vs, gs, fs));
   
-    auto raytracingVT(std::make_unique<msg::RaytracingTechnique>());
-    raytracingVT->gl = _gl;
-    raytracingVT->computeShader = computeShader;
-    raytracingVT->drawProgram = drawProgram;
-    raytracingVT->viewport = _viewport; // TODO need resize texture on change viewport
-    raytracingVT->orbitCamera = orbitCamera;
-    raytracingVT->perspectiveCamera = perspectiveCamera;
-    raytracingVT->init();
+    raytracingTechnique = std::make_unique<msg::RaytracingTechnique>();
+    raytracingTechnique->gl = _gl;
+    raytracingTechnique->computeShader = computeShader;
+    raytracingTechnique->drawProgram = drawProgram;
+    raytracingTechnique->viewport = _viewport; // TODO need resize texture on change viewport
+    raytracingTechnique->orbitCamera = orbitCamera;
+    raytracingTechnique->perspectiveCamera = perspectiveCamera;
+    raytracingTechnique->init();
 
-    _visualizationTechniques.emplace_back(std::move(raytracingVT));
     return true;
 }
 
 
-bool msg::Renderer::initVT() {
-    std::cout << "Renderer initVT" << std::endl;
-    bool i = initRaytracingVT();
-
-    return i;
-}
-
 void msg::Renderer::drawVT() {
-    // draw VT
-    for(auto &vt : _visualizationTechniques) {
-        vt->draw();
-    }
-    // std::cout << orbitCamera->getDistance() << std::endl;
+    raytracingTechnique->draw();
 }
