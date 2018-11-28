@@ -1,7 +1,14 @@
 #version 430 core
 
+struct Ray { vec3 origin, direction; };
+struct Sphere { vec3 center; float radius; };
+struct Cylinder { vec3 center, direction; float radius; };
+struct AABB { vec3 min, max; float padding[2]; };
+
 layout(binding = 0, rgba32f) uniform image2D framebuffer;
 layout(std140, binding = 3) buffer debug { vec4 debug_out[]; };
+
+layout(std140, binding = 1) buffer AABB_buffer { AABB aabb[]; };
 
 uniform vec3 eye;
 uniform vec3 ray00, ray01, ray10, ray11;
@@ -16,16 +23,13 @@ uniform vec3 ray00, ray01, ray10, ray11;
 #define SPHERE_PRIMITIVE 2
 #define CYLINDER_PRIMITIVE 3
 
-struct Ray { vec3 origin, direction; };
-struct Sphere { vec3 center; float radius; };
-struct Cylinder { vec3 center, direction; float radius; };
-struct AABB { vec3 min, max; };
+
 
 const AABB boxes[NUM_BOXES] = {
     // The ground 
-    {vec3(-5.0, -0.1, -5.0), vec3(5.0, 0.0, 5.0)},
+    {vec3(-5.0, -0.1, -5.0), vec3(5.0, 0.0, 5.0), {0.0f, 0.0f}},
     // Box in the middle 
-    {vec3(-0.5, 0.0, -0.5), vec3(0.5, 1.0, 0.5)}
+    {vec3(-0.5, 0.0, -0.5), vec3(0.5, 1.0, 0.5), {0.0f, 0.0f}}
 };
 
 const Sphere spheres[NUM_SPHERES] = {

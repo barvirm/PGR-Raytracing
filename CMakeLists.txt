@@ -30,11 +30,19 @@ set(CORE_FILES
     src/core/GERendererBase.cpp src/core/GERendererBase.h
     src/core/Renderer.cpp src/core/Renderer.h
     src/core/MouseEventHandler.cpp src/core/MouseEventHandler.h
+    src/core/SceneBuilder.cpp src/core/SceneBuilder.h
 )
 
 set(GRAPHICS_FILES
     src/graphics/VisualizationTechnique.h
     src/graphics/RaytracingTechnique.h src/graphics/RaytracingTechnique.cpp
+)
+
+SET(GRAPHICS_SHAPES_FILES
+    src/graphics/Shapes/Shape.h 
+    src/graphics/Shapes/AABB.h
+    src/graphics/Shapes/Cylinder.h
+    src/graphics/Shapes/Sphere.h
 )
 
 set(UTIL_FILES
