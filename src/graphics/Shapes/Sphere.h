@@ -7,8 +7,6 @@ namespace msg {
     class Sphere : public Shape {
         public:
             Sphere(glm::vec3 center, float radius) : center(center), radius(radius) {};
-
-        private:
             glm::vec3 center;
             float radius;
     };

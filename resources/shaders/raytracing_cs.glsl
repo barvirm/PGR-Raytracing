@@ -12,6 +12,7 @@ layout(std140, binding = 1) buffer AABB_buffer { AABB aabb[]; };
 
 uniform vec3 eye;
 uniform vec3 ray00, ray01, ray10, ray11;
+uniform int num_aabb;
 
 
 #define MAX_SCENE_BOUNDS 100.0

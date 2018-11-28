@@ -32,7 +32,7 @@ namespace msg {
         void update();
         void draw();
         void onViewportChanged();
-        void setScene();
+        void setScene(std::shared_ptr<msg::Scene> &_scene);
 
         std::shared_ptr<ge::gl::Program> program;
         std::shared_ptr<ge::gl::Program> computeShader;
@@ -49,8 +49,9 @@ namespace msg {
         std::shared_ptr<ge::gl::Texture> texture; 
         std::shared_ptr<ge::gl::VertexArray> VAO;
         std::shared_ptr<ge::gl::Buffer> SSBO;
-        
 
+        std::shared_ptr<ge::gl::Buffer> AABB_SSBO;
+        std::shared_ptr<ge::gl::Buffer> prefix_sum_primitives;
 
         glm::ivec3 workingGroupLayout;
         glm::vec3 getRay(float x, float y,const glm::vec3 &eye);

@@ -5,6 +5,7 @@
 #include <geUtil/OrbitCamera.h>
 #include <geUtil/PerspectiveCamera.h>
 
+#include <graphics/Scene.h>
 #include <geGL/geGL.h>
 
 void msg::RaytracingTechnique::init() {
@@ -26,6 +27,33 @@ void msg::RaytracingTechnique::draw() {
     VAO->bind();
     texture->bind(0);
     gl->glDrawArrays(GL_POINTS, 0, 1);
+
+}
+
+void msg::RaytracingTechnique::setScene(std::shared_ptr<msg::Scene> &_scene) {
+    scene = _scene;
+
+    std::vector<float> AABB_GPU;
+    for(auto &aabb : scene->AABBes() ) {
+        AABB_GPU.emplace_back(aabb.min.x);
+        AABB_GPU.emplace_back(aabb.min.y);
+        AABB_GPU.emplace_back(aabb.min.z);
+        AABB_GPU.emplace_back(aabb.max.x);
+        AABB_GPU.emplace_back(aabb.max.y);
+        AABB_GPU.emplace_back(aabb.max.z);
+        AABB_GPU.emplace_back(0.0f);
+        AABB_GPU.emplace_back(0.0f);
+    }
+
+    int num_aabb = scene->AABBes().size();
+
+    AABB_SSBO = std::make_shared<ge::gl::Buffer>(gl->getFunctionTable(), sizeof(float) * AABB_GPU.size(), AABB_GPU.data());
+    AABB_SSBO->bindBase(GL_SHADER_STORAGE_BUFFER, 2);
+    computeShader->set("num_aabb", num_aabb);
+    // TODO create more SSBO buffers, one per primitive
+    // send to cpu a left it for eternity
+
+
 
 }
 
