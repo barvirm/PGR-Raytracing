@@ -31,11 +31,18 @@ const float ambientStrength = 0.1f;
 const Light light = Light(vec3(0,20,0), vec3(0.8));
 
 struct hitinfo {
-    vec2 lambda;
-    int bi;
+    bool hit;
+    float t;
+    int primitiveIndex;
     int primitive_type;
-    float dist;
 };
+
+hitinfo createHitInfo() {
+    hitinfo i;
+    i.t = MAX_SCENE_BOUNDS;
+    i.hit = false;
+    return i;
+}
 
 vec3 intersectionPoint(Ray r, float t) {
     return r.origin + r.direction * t;
@@ -84,18 +91,16 @@ vec2 intersectAABB(Ray ray, const AABB b) {
     return vec2(tNear, tFar);
 }
 
-bool intersectAABBes(Ray ray, out hitinfo info) {
-    float smallest = MAX_SCENE_BOUNDS;
+bool intersectAABBes(Ray ray, inout hitinfo info) {
     bool found = false;
     for (int i = 0; i < num_aabb; i++) {
-        vec2 lambda = intersectAABB(ray, aabb[i]);
-        if (lambda.x > 0.0 && lambda.x < lambda.y && lambda.x < smallest) {
-            info.lambda = lambda;
-            info.bi = i;
+        vec2 l = intersectAABB(ray, aabb[i]);
+        if (l.x > 0.0 && l.x < l.y && l.x < info.t) {
+            info.primitiveIndex = i;
             info.primitive_type = AABB_PRIMITIVE;
-            smallest = lambda.x;
+            info.t = l.x;
+            info.hit = true;
             found = true;
-
         }
     }
     return found;
@@ -126,17 +131,15 @@ vec2 intersectSphere(Ray ray, const Sphere s) {
     return vec2(min(t1,t2), max(t1,t2));
 };
 
-bool intersectSpheres(Ray ray, out hitinfo info) {
-    float smallest = MAX_SCENE_BOUNDS;
+bool intersectSpheres(Ray ray, inout hitinfo info) {
     bool found = false;
     for(int i = 0; i < num_spheres; ++i) {
         vec2 l = intersectSphere(ray, spheres[i]);
-        vec3 ip = intersectionPoint(ray, l.x);
-        if (l.x > 0.0 && l.x < smallest ) {
-            info.lambda = l;
-            info.bi = i;
+        if (l.x > 0.0  && l.x < info.t ) {
+            info.t = l.x;
+            info.primitiveIndex = i;
             info.primitive_type = SPHERE_PRIMITIVE;
-            smallest = l.x;
+            info.hit = true;
             found = true;
         }
     }
@@ -164,43 +167,40 @@ vec2 intersectCylinder(Ray r, const Cylinder c) {
 
 }
 
-bool intersectCylinder(Ray ray, out hitinfo info) {
+bool intersectCylinder(Ray ray, inout hitinfo info) {
     float smallest = MAX_SCENE_BOUNDS;
     bool found = false;
     for(int i = 0; i < num_cylinders; ++i) {
         vec2 l = intersectCylinder(ray, cylinders[i]);
-        if (l.x > 0.0 && l.x < smallest) {
-            info.lambda = l;
-            info.bi = i;
+        if (l.x > 0.0 && l.x < l.t) {
+            info.primitiveIndex = i;
             info.primitive_type = CYLINDER_PRIMITIVE;
-            smallest = l.x;
+            info.hit = true;
+            info.t = l.x;
             found = true;
         }
     }
     return found;
 }
 
-Ray getRayFromLight(Light l, vec3 point) {
-    return Ray(point, l.position - point);
-}
-
-
-
 vec4 trace(Ray ray) {
     vec4 ambient = vec4(light.color * ambientStrength, 1.0);
-    hitinfo i;
-    if ( intersectSpheres(ray, i) || intersectAABBes(ray, i) || intersectCylinder(ray, i) ) {
+    hitinfo hitInfo_cameraRay = createHitInfo();
+    intersectSpheres(ray, hitInfo_cameraRay);
+    intersectAABBes(ray, hitInfo_cameraRay);
+    intersectCylinder(ray, hitInfo_cameraRay);
+    if ( hitInfo_cameraRay.hit ) {
         // PHONG
         vec4 color = ambient;
-        vec3 ip = intersectionPoint(ray, i.lambda.x);
+        vec3 ip = intersectionPoint(ray, hitInfo_cameraRay.t);
 
         Ray r = Ray(ip, light.position - ip);
         hitinfo i2;
         vec3 normal;
-        switch(i.primitive_type) {
-            case AABB_PRIMITIVE: normal = getNormalAABB(aabb[i.bi], ip); break;
-            case SPHERE_PRIMITIVE: normal = getNormalSphere(spheres[i.bi], ip); break;
-            case CYLINDER_PRIMITIVE: normal = getNormalCylinder(cylinders[i.bi], ip); break;
+        switch(hitInfo_cameraRay.primitive_type) {
+            case AABB_PRIMITIVE: normal = getNormalAABB(aabb[hitInfo_cameraRay.primitiveIndex], ip); break;
+            case SPHERE_PRIMITIVE: normal = getNormalSphere(spheres[hitInfo_cameraRay.primitiveIndex], ip); break;
+            case CYLINDER_PRIMITIVE: normal = getNormalCylinder(cylinders[hitInfo_cameraRay.primitiveIndex], ip); break;
         }
 
         vec3 lightDir = normalize(light.position - ip);
