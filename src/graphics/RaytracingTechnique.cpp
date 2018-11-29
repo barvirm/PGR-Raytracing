@@ -34,6 +34,8 @@ void msg::RaytracingTechnique::setScene(std::shared_ptr<msg::Scene> &_scene) {
     scene = _scene;
 
     // TODO REFACTORING !! 
+
+    // convertToGPUFriendly std::shared_ptr<glm::vec4>(vector<T> collection, std::function<void(T)> fill)
     std::vector<glm::vec4> AABB_GPU;
     for(auto &aabb : scene->AABBes() ) {
         AABB_GPU.emplace_back(aabb.min, 0.0f);
@@ -41,8 +43,7 @@ void msg::RaytracingTechnique::setScene(std::shared_ptr<msg::Scene> &_scene) {
     }
 
     AABB_SSBO = std::make_shared<ge::gl::Buffer>(gl->getFunctionTable(), sizeof(glm::vec4) * AABB_GPU.size(), AABB_GPU.data());
-    int num_aabb = scene->AABBes().size();
-    computeShader->set("num_aabb", num_aabb);
+    computeShader->set("num_aabb", static_cast<int>(scene->AABBes().size()));
     AABB_SSBO->bindBase(GL_SHADER_STORAGE_BUFFER, 1);
 
     std::vector<glm::vec4> spheres_GPU;

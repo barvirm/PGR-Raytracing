@@ -1,10 +1,7 @@
 #include <core/SceneBuilder.h>
 #include <graphics/Scene.h>
 
-// TODO #include<graphics/Shapes.h>
-#include <graphics/Shapes/AABB.h>
-#include <graphics/Shapes/Sphere.h>
-#include <graphics/Shapes/Cylinder.h>
+#include<graphics/Shapes.h>
 
 std::shared_ptr<msg::Scene> SceneBuilder::build() {
     auto scene(std::make_shared<msg::Scene>());
