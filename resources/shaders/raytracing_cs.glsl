@@ -192,37 +192,41 @@ vec3 trace(Ray ray) {
     if ( hitInfo_cameraRay.hit ) {
         // PHONG
         vec3 ip = intersectionPoint(ray, hitInfo_cameraRay.t);
-        Light light = lights[0];
-        Ray r = Ray(ip, normalize(light.position - ip));
-        shiftRay(r, 0.0001);
-        hitinfo shadowHitInfo = createHitInfo();
-        intersectSpheres(r, shadowHitInfo);
-        intersectAABBes(r, shadowHitInfo);
-        intersectCylinder(r, shadowHitInfo);
-        vec3 ambient = light.color * ambientStrength;
-        if ( shadowHitInfo.hit && shadowHitInfo.t < distance(light.position, ip)) {
-            return ambient;
-        }
-        vec3 normal;
-        switch(hitInfo_cameraRay.primitive_type) {
-            case AABB_PRIMITIVE: normal = getNormalAABB(aabb[hitInfo_cameraRay.primitiveIndex], ip); break;
-            case SPHERE_PRIMITIVE: normal = getNormalSphere(spheres[hitInfo_cameraRay.primitiveIndex], ip); break;
-            case CYLINDER_PRIMITIVE: normal = getNormalCylinder(cylinders[hitInfo_cameraRay.primitiveIndex], ip); break;
-        }
+        
+        vec3 color = vec3(0);
+        for(int i = 0; i < num_lights; ++i) {
+            Light light = lights[i];
+            vec3 ambient = light.color * ambientStrength;
+            Ray r = Ray(ip, normalize(light.position - ip));
+            shiftRay(r, 0.0001);
+            hitinfo shadowHitInfo = createHitInfo();
+            intersectSpheres(r, shadowHitInfo);
+            intersectAABBes(r, shadowHitInfo);
+            intersectCylinder(r, shadowHitInfo);
+            
+            if ( shadowHitInfo.hit && shadowHitInfo.t < distance(light.position, ip)) { color += ambient; continue; }
+            vec3 normal;
+            switch(hitInfo_cameraRay.primitive_type) {
+                case AABB_PRIMITIVE: normal = getNormalAABB(aabb[hitInfo_cameraRay.primitiveIndex], ip); break;
+                case SPHERE_PRIMITIVE: normal = getNormalSphere(spheres[hitInfo_cameraRay.primitiveIndex], ip); break;
+                case CYLINDER_PRIMITIVE: normal = getNormalCylinder(cylinders[hitInfo_cameraRay.primitiveIndex], ip); break;
+            }
         
 
-        const vec3 white = vec3(1);
-        vec3 lightDir = normalize(light.position - ip);
-        float diff = max(dot(normal, lightDir), 0.0);
-        vec3 diffuse = diff * light.color;
+            const vec3 white = vec3(1);
+            vec3 lightDir = normalize(light.position - ip);
+            float diff = max(dot(normal, lightDir), 0.0);
+            vec3 diffuse = diff * light.color;
 
 
-        vec3 viewDir = normalize(eye - ip);
-        vec3 reflectDir = reflect(-lightDir, normal);
-        float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
-        vec3 specular = specularStrength * spec * light.color;
-        vec3 result = (ambient + diffuse + specular) * white;
-        return result;
+            vec3 viewDir = normalize(eye - ip);
+            vec3 reflectDir = reflect(-lightDir, normal);
+            float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+            vec3 specular = specularStrength * spec * light.color;
+            color += (ambient + diffuse + specular) * white;
+        }
+
+        return color;
     }
     return vec3(0);
 }

@@ -14,7 +14,8 @@ std::shared_ptr<msg::Scene> SceneBuilder::build() {
     msg::Sphere s3(glm::vec3( 0.0, 40.0, 0.0), 0.1f);
     msg::Cylinder c1(glm::vec3(0), glm::vec3(0.0, 1.0, 0.0), 1.5f);
 
-    msg::Light l1(glm::vec3(0,10,0), glm::vec3(0.8));
+    msg::Light l1(glm::vec3(0,20,0), glm::vec3(0.4));
+    msg::Light l2(glm::vec3(5,20,0), glm::vec3(0.4));
 
     scene->addShape(box1);
     scene->addShape(box2);
@@ -22,6 +23,7 @@ std::shared_ptr<msg::Scene> SceneBuilder::build() {
     scene->addShape(s2);
     scene->addShape(s3);
     scene->addLight(l1);
+    scene->addLight(l2);
     //scene->addShape(c1);
     return scene;
 }
