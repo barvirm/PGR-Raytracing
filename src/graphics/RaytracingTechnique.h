@@ -51,6 +51,8 @@ namespace msg {
         std::shared_ptr<ge::gl::Buffer> SSBO;
 
         std::shared_ptr<ge::gl::Buffer> AABB_SSBO;
+        std::shared_ptr<ge::gl::Buffer> spheres_SSBO;
+        std::shared_ptr<ge::gl::Buffer> cylinder_SSBO;
         std::shared_ptr<ge::gl::Buffer> prefix_sum_primitives;
 
         glm::ivec3 workingGroupLayout;
@@ -58,5 +60,6 @@ namespace msg {
 
         std::string to_string(const glm::vec3 &d);
         std::string to_string(const glm::ivec3 &d);
+
     };
 }

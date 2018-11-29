@@ -3,49 +3,32 @@
 struct Ray { vec3 origin, direction; };
 struct Sphere { vec3 center; float radius; };
 struct Cylinder { vec3 center, direction; float radius; };
-struct AABB { vec3 min, max; float padding[2]; };
+struct AABB { vec3 min; float padding0; vec3 max; float padding1; };
 
 layout(binding = 0, rgba32f) uniform image2D framebuffer;
-layout(std140, binding = 3) buffer debug { vec4 debug_out[]; };
+layout(std140, binding = 10) buffer debug { vec4 debug_out[]; };
 
 layout(std140, binding = 1) buffer AABB_buffer { AABB aabb[]; };
+layout(std140, binding = 2) buffer spheres_buffer { Sphere spheres[]; };
+layout(std140, binding = 3) buffer cylinder_buffer { Cylinder cylinders[]; };
+
 
 uniform vec3 eye;
 uniform vec3 ray00, ray01, ray10, ray11;
-uniform int num_aabb;
+uniform int num_aabb, num_spheres, num_cylinders;
 
 
 #define MAX_SCENE_BOUNDS 100.0
-#define NUM_BOXES 2
-#define NUM_SPHERES 1
-#define NUM_CYLINDERS 1
 
-#define AABB_PRIMITIVE 1
-#define SPHERE_PRIMITIVE 2
-#define CYLINDER_PRIMITIVE 3
+#define AABB_PRIMITIVE 0.3f
+#define SPHERE_PRIMITIVE 0.5f
+#define CYLINDER_PRIMITIVE 0.7f
 
-
-
-const AABB boxes[NUM_BOXES] = {
-    // The ground 
-    {vec3(-5.0, -0.1, -5.0), vec3(5.0, 0.0, 5.0), {0.0f, 0.0f}},
-    // Box in the middle 
-    {vec3(-0.5, 0.0, -0.5), vec3(0.5, 1.0, 0.5), {0.0f, 0.0f}}
-};
-
-const Sphere spheres[NUM_SPHERES] = {
-    {vec3(0.0, 1.0, 0.0), 1.0f}
-    //{vec3(5.0, 0.0, 0.0), 1.0f}
-};
-
-const Cylinder Cylinders[NUM_CYLINDERS] = {
-    {vec3(0), vec3(0.0, 1.0, 0.0), 1.5f}
-};
 
 struct hitinfo {
     vec2 lambda;
     int bi;
-    int primitive_type;
+    float primitive_type;
 };
 
 // NORMALS FROM SHAPES
@@ -84,8 +67,8 @@ vec2 intersectAABB(Ray ray, const AABB b) {
 bool intersectAABBes(Ray ray, out hitinfo info) {
     float smallest = MAX_SCENE_BOUNDS;
     bool found = false;
-    for (int i = 0; i < NUM_BOXES; i++) {
-        vec2 lambda = intersectAABB(ray, boxes[i]);
+    for (int i = 0; i < num_aabb; i++) {
+        vec2 lambda = intersectAABB(ray, aabb[i]);
         if (lambda.x > 0.0 && lambda.x < lambda.y && lambda.x < smallest) {
             info.lambda = lambda;
             info.bi = i;
@@ -126,7 +109,7 @@ vec2 intersectSphere(Ray ray, const Sphere s) {
 bool intersectSpheres(Ray ray, out hitinfo info) {
     float smallest = MAX_SCENE_BOUNDS;
     bool found = false;
-    for(int i = 0; i < NUM_SPHERES; ++i) {
+    for(int i = 0; i < num_spheres; ++i) {
         vec2 l = intersectSphere(ray, spheres[i]);
         if (l.x > 0.0 && l.x < smallest) {
             info.lambda = l;
@@ -163,8 +146,8 @@ vec2 intersectCylinder(Ray r, const Cylinder c) {
 bool intersectCylinder(Ray ray, out hitinfo info) {
     float smallest = MAX_SCENE_BOUNDS;
     bool found = false;
-    for(int i = 0; i < NUM_CYLINDERS; ++i) {
-        vec2 l = intersectCylinder(ray, Cylinders[i]);
+    for(int i = 0; i < num_cylinders; ++i) {
+        vec2 l = intersectCylinder(ray, cylinders[i]);
         if (l.x > 0.0 && l.x < smallest) {
             info.lambda = l;
             info.bi = i;
@@ -195,7 +178,7 @@ layout (local_size_x = 16, local_size_y = 8) in;
 void main(void) {
     ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
     ivec2 size = imageSize(framebuffer);
-    //debug_out[gl_GlobalInvocationID.x] = vec4(pixel, size);
+    debug_out[gl_GlobalInvocationID.x] = vec4(aabb[0].min.xyz, 0.0f);
     if (pixel.x >= size.x || pixel.y >= size.y) { return; }
     vec2 pos = vec2(pixel) / vec2(size.x - 1, size.y - 1);
     vec3 dir = mix(mix(ray00, ray01, pos.y), mix(ray10, ray11, pos.y), pos.x);

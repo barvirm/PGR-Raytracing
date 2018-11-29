@@ -100,7 +100,7 @@ bool msg::Renderer::initRaytracingVT() {
     raytracingTechnique->viewport = _viewport;
     raytracingTechnique->orbitCamera = orbitCamera;
     raytracingTechnique->perspectiveCamera = perspectiveCamera;
-    raytracingTechnique->scene = scene;
+    raytracingTechnique->setScene(scene);
     raytracingTechnique->init();
 
     return true;
