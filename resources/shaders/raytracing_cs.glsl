@@ -28,7 +28,7 @@ const float ambientStrength = 0.1f;
 #define CYLINDER_PRIMITIVE 3
 #define NUM_LIGHTS 1
 
-const Light light = Light(vec3(0,20,0), vec3(0.8));
+const Light light = Light(vec3(0,10,0), vec3(0.8));
 
 struct hitinfo {
     bool hit;
@@ -74,7 +74,7 @@ vec3 getRayHitPoint(Ray ray, float t) {
     return ray.origin + ray.direction * t;
 }
 
-void shiftRay(Ray ray, float amount) {
+void shiftRay(inout Ray ray, float amount) {
     ray.origin += ray.direction * amount;
 }
 
@@ -194,8 +194,15 @@ vec4 trace(Ray ray) {
         vec4 color = ambient;
         vec3 ip = intersectionPoint(ray, hitInfo_cameraRay.t);
 
-        Ray r = Ray(ip, light.position - ip);
-        hitinfo i2;
+        Ray r = Ray(ip, normalize(light.position - ip));
+        shiftRay(r, 0.0001);
+        hitinfo shadowHitInfo = createHitInfo();
+        intersectSpheres(r, shadowHitInfo);
+        intersectAABBes(r, shadowHitInfo);
+        intersectCylinder(r, shadowHitInfo);
+        if ( shadowHitInfo.hit && shadowHitInfo.t < distance(light.position, ip)) {
+            return ambient;
+        }
         vec3 normal;
         switch(hitInfo_cameraRay.primitive_type) {
             case AABB_PRIMITIVE: normal = getNormalAABB(aabb[hitInfo_cameraRay.primitiveIndex], ip); break;

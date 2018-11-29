@@ -72,7 +72,7 @@ namespace msg {
         glm::ivec3 workingGroupLayout;
         glm::vec3 getRay(float x, float y,const glm::vec3 &eye);
 
-        std::string to_string(const glm::vec3 &d);
+        std::string to_string(const glm::vec4 &d);
         std::string to_string(const glm::ivec3 &d);
 
     };

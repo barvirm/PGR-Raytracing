@@ -118,9 +118,9 @@ void msg::RaytracingTechnique::update() {
     gl->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
 /*
-    auto *dbg = static_cast<float *>(gl->glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
-    for(auto i = 0; i < 6; ++i) {
-        std::cout << dbg[i] << " ";
+    auto *dbg = static_cast<glm::vec4 *>(gl->glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
+    for(auto i = 0; i < 3; ++i) {
+        std::cout << to_string(dbg[i]) << "\n ";
     }
     std::cout << std::endl;
 */
@@ -137,11 +137,12 @@ glm::vec3 msg::RaytracingTechnique::getRay(float x, float y,const glm::vec3 &eye
     return ray;
 }
 
-std::string msg::RaytracingTechnique::to_string(const glm::vec3 &d) {
+std::string msg::RaytracingTechnique::to_string(const glm::vec4 &d) {
     std::string res = "";
     res += std::to_string(d.x) + " ";
     res += std::to_string(d.y) + " ";
-    res += std::to_string(d.z);
+    res += std::to_string(d.z) + " ";
+    res += std::to_string(d.w);
     return res;
 }
 
