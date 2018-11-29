@@ -35,12 +35,6 @@ void msg::RaytracingTechnique::setScene(std::shared_ptr<msg::Scene> &_scene) {
 
     using namespace std;
 
-    // TODO need more refactoring
-    // define stuctures
-    // define convert function
-    // convert data
-    // bind SSBO
-    // set num variables in ComputeShader
     struct GPU_AABB { 
         glm::vec3 min;
         float padding;

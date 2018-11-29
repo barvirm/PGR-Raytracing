@@ -17,6 +17,6 @@ std::shared_ptr<msg::Scene> SceneBuilder::build() {
     scene->addShape(box2);
     scene->addShape(s1);
     scene->addShape(s2);
-    scene->addShape(c1);
+    //scene->addShape(c1);
     return scene;
 }

@@ -17,30 +17,50 @@ uniform vec3 eye;
 uniform vec3 ray00, ray01, ray10, ray11;
 uniform int num_aabb, num_spheres, num_cylinders;
 
+struct Light { vec3 position, color; };
+const float ambientStrength = 0.1f;
+
 
 #define MAX_SCENE_BOUNDS 100.0
 
-#define AABB_PRIMITIVE 0.3f
-#define SPHERE_PRIMITIVE 0.5f
-#define CYLINDER_PRIMITIVE 0.7f
+#define AABB_PRIMITIVE 1
+#define SPHERE_PRIMITIVE 2
+#define CYLINDER_PRIMITIVE 3
+#define NUM_LIGHTS 1
 
+const Light light = Light(vec3(0,20,0), vec3(0.8));
 
 struct hitinfo {
     vec2 lambda;
     int bi;
-    float primitive_type;
+    int primitive_type;
+    float dist;
 };
 
+vec3 intersectionPoint(Ray r, float t) {
+    return r.origin + r.direction * t;
+}
+
 // NORMALS FROM SHAPES
-vec3 getNormalSphere(vec3 origin, vec3 spherePoint) {
-    vec3 normal = spherePoint - origin;
+vec3 getNormalSphere(Sphere sphere, vec3 spherePoint) {
+    vec3 normal = spherePoint - sphere.center;
     return normalize(normal);
 }
 
-vec3 getNormalCylinder(vec3 origin, vec3 direction, float radius, vec3 cylinderPoint) {
-    vec3 proj = origin + ((cylinderPoint - origin) * direction) * direction;
+vec3 getNormalCylinder(Cylinder c, vec3 cylinderPoint) {
+    vec3 proj = c.center + ((cylinderPoint - c.center) * c.direction) * c.direction;
     vec3 normal = cylinderPoint - proj;
     return normalize(normal);
+}
+
+vec3 getNormalAABB(AABB aabb, vec3 cubePoint) {
+    vec3 c = (aabb.min + aabb.max) * 0.5;
+    vec3 d = abs((aabb.min - aabb.max) * 0.5);
+    vec3 p = cubePoint - c;
+    float bias = 1.000001;
+    return normalize(p / d * bias);
+
+
 }
 
 vec3 getRayHitPoint(Ray ray, float t) {
@@ -111,7 +131,8 @@ bool intersectSpheres(Ray ray, out hitinfo info) {
     bool found = false;
     for(int i = 0; i < num_spheres; ++i) {
         vec2 l = intersectSphere(ray, spheres[i]);
-        if (l.x > 0.0 && l.x < smallest) {
+        vec3 ip = intersectionPoint(ray, l.x);
+        if (l.x > 0.0 && l.x < smallest ) {
             info.lambda = l;
             info.bi = i;
             info.primitive_type = SPHERE_PRIMITIVE;
@@ -159,16 +180,34 @@ bool intersectCylinder(Ray ray, out hitinfo info) {
     return found;
 }
 
+Ray getRayFromLight(Light l, vec3 point) {
+    return Ray(point, l.position - point);
+}
+
+
 
 vec4 trace(Ray ray) {
+    vec4 ambient = vec4(light.color * ambientStrength, 1.0);
     hitinfo i;
-    if (
-        intersectAABBes(ray, i) ||
-        intersectSpheres(ray, i) ||
-        intersectCylinder(ray, i)
-    ) {
-        vec4 gray = vec4(i.bi * i.primitive_type / 10.0 + 0.8);
-        return vec4(gray.rgb, 1.0);
+    if ( intersectSpheres(ray, i) || intersectAABBes(ray, i) || intersectCylinder(ray, i) ) {
+        // PHONG
+        vec4 color = ambient;
+        vec3 ip = intersectionPoint(ray, i.lambda.x);
+
+        Ray r = Ray(ip, light.position - ip);
+        hitinfo i2;
+        vec3 normal;
+        switch(i.primitive_type) {
+            case AABB_PRIMITIVE: normal = getNormalAABB(aabb[i.bi], ip); break;
+            case SPHERE_PRIMITIVE: normal = getNormalSphere(spheres[i.bi], ip); break;
+            case CYLINDER_PRIMITIVE: normal = getNormalCylinder(cylinders[i.bi], ip); break;
+        }
+
+        vec3 lightDir = normalize(light.position - ip);
+        float diff = max(dot(normal, lightDir), 0.0);
+        vec3 diffuse = diff * light.color;
+        color += vec4(diffuse,0.0);
+        return color;
     }
     return vec4(0.0, 0.0, 0.0, 1.0);
 }
@@ -178,7 +217,6 @@ layout (local_size_x = 16, local_size_y = 8) in;
 void main(void) {
     ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
     ivec2 size = imageSize(framebuffer);
-    debug_out[gl_GlobalInvocationID.x] = vec4(aabb[0].min.xyz, 0.0f);
     if (pixel.x >= size.x || pixel.y >= size.y) { return; }
     vec2 pos = vec2(pixel) / vec2(size.x - 1, size.y - 1);
     vec3 dir = mix(mix(ray00, ray01, pos.y), mix(ray10, ray11, pos.y), pos.x);
