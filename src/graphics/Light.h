@@ -4,7 +4,8 @@
 
 namespace msg {
     class Light {
-        Light(glm::vec3 position, glm::vec3 color) : position(position), color(color) {};
-        glm::vec3 position, color;
+        public:
+            Light(glm::vec3 position, glm::vec3 color) : position(position), color(color) {};
+            glm::vec3 position, color;
     };
 }

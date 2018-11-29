@@ -2,9 +2,9 @@
 
 struct Ray { vec3 origin, direction; };
 struct Sphere { vec3 center; float radius; };
-struct Cylinder { vec3 center; float padding; vec3 direction; float radius; };
-struct AABB { vec3 min; float padding0; vec3 max; float padding1; };
-struct Light { vec3 position; float padding0; vec3 color; float padding1; };
+struct Cylinder { vec3 center; float p; vec3 direction; float radius; };
+struct AABB { vec3 min; float p; vec3 max; float p1; };
+struct Light { vec3 position; float p; vec3 color; float p1; };
 
 layout(binding = 0, rgba32f) uniform image2D framebuffer;
 layout(std140, binding = 10) buffer debug { vec4 debug_out[]; };
@@ -29,9 +29,6 @@ const float specularStrength = 0.5f;
 #define AABB_PRIMITIVE 1
 #define SPHERE_PRIMITIVE 2
 #define CYLINDER_PRIMITIVE 3
-#define NUM_LIGHTS 1
-
-const Light light = Light(vec3(0,10,0),0, vec3(0.8),0);
 
 struct hitinfo {
     bool hit;
@@ -187,7 +184,7 @@ bool intersectCylinder(Ray ray, inout hitinfo info) {
 }
 
 vec3 trace(Ray ray) {
-    vec3 ambient = light.color * ambientStrength;
+    
     hitinfo hitInfo_cameraRay = createHitInfo();
     intersectSpheres(ray, hitInfo_cameraRay);
     intersectAABBes(ray, hitInfo_cameraRay);
@@ -195,13 +192,14 @@ vec3 trace(Ray ray) {
     if ( hitInfo_cameraRay.hit ) {
         // PHONG
         vec3 ip = intersectionPoint(ray, hitInfo_cameraRay.t);
-
+        Light light = lights[0];
         Ray r = Ray(ip, normalize(light.position - ip));
         shiftRay(r, 0.0001);
         hitinfo shadowHitInfo = createHitInfo();
         intersectSpheres(r, shadowHitInfo);
         intersectAABBes(r, shadowHitInfo);
         intersectCylinder(r, shadowHitInfo);
+        vec3 ambient = light.color * ambientStrength;
         if ( shadowHitInfo.hit && shadowHitInfo.t < distance(light.position, ip)) {
             return ambient;
         }
@@ -211,6 +209,7 @@ vec3 trace(Ray ray) {
             case SPHERE_PRIMITIVE: normal = getNormalSphere(spheres[hitInfo_cameraRay.primitiveIndex], ip); break;
             case CYLINDER_PRIMITIVE: normal = getNormalCylinder(cylinders[hitInfo_cameraRay.primitiveIndex], ip); break;
         }
+        
 
         const vec3 white = vec3(1);
         vec3 lightDir = normalize(light.position - ip);

@@ -58,6 +58,14 @@ void msg::RaytracingTechnique::setScene(std::shared_ptr<msg::Scene> &_scene) {
             center(center), direction(direction), radius(radius), padding(0.0f) {};
     };
 
+    struct GPU_LIGHT {
+        glm::vec3 position;
+        float p;
+        glm::vec3 color;
+        float x;
+        GPU_LIGHT(const glm::vec3 &position, const glm::vec3 &color) : position(position), color(color), p(0.0f), x(0.0f) {};
+    };
+
     auto sendToGpuAsSSBO = [this](auto convertToGpuStruct, const auto &col, auto &ssbo, const int &bindingPoint) {
         using ConvertType = decltype(convertToGpuStruct(col[0]));
         std::vector<ConvertType> r;
@@ -77,6 +85,10 @@ void msg::RaytracingTechnique::setScene(std::shared_ptr<msg::Scene> &_scene) {
     auto convert_CYLINDER = [](const msg::Cylinder &cylinder) -> GPU_CYLINDER { return {cylinder.center, cylinder.direction, cylinder.radius}; };
     sendToGpuAsSSBO(convert_CYLINDER, scene->cylinders(), cylinder_SSBO, 3);
     computeShader->set1i("num_cylinders", scene->cylinders().size());
+
+    auto convert_LIGHT = [](const msg::Light &light) -> GPU_LIGHT { return {light.position, light.color}; };
+    sendToGpuAsSSBO(convert_LIGHT, scene->lights(), light_SSBO, 4);
+    computeShader->set1i("num_lights", scene->lights().size());
 }
 
 void msg::RaytracingTechnique::update() {
