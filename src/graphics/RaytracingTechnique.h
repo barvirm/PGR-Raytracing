@@ -1,9 +1,12 @@
 #pragma once
 #include <graphics/VisualizationTechnique.h>
 #include <memory>
+#include <functional>
 
 #include <glm/fwd.hpp>
 #include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
+#include <graphics/Shapes.h>
 
 
 namespace ge {
@@ -22,6 +25,17 @@ namespace ge {
 
 namespace msg {
     class Scene;
+    class AABB;
+}
+
+
+namespace util {
+    template<class T, typename FillFunction>
+    std::vector<glm::vec4> convertToGPUFriendly(T &collection, FillFunction fill) {
+        std::vector<glm::vec4> result;
+        for(auto &t: collection) { fill(t, result); }
+        return result;
+    }
 }
 
 
@@ -63,3 +77,4 @@ namespace msg {
 
     };
 }
+

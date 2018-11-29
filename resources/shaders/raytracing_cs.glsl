@@ -2,7 +2,7 @@
 
 struct Ray { vec3 origin, direction; };
 struct Sphere { vec3 center; float radius; };
-struct Cylinder { vec3 center, direction; float radius; };
+struct Cylinder { vec3 center; float padding; vec3 direction; float radius; };
 struct AABB { vec3 min; float padding0; vec3 max; float padding1; };
 
 layout(binding = 0, rgba32f) uniform image2D framebuffer;

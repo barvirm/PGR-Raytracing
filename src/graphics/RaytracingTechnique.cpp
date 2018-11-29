@@ -33,41 +33,57 @@ void msg::RaytracingTechnique::draw() {
 void msg::RaytracingTechnique::setScene(std::shared_ptr<msg::Scene> &_scene) {
     scene = _scene;
 
-    // TODO REFACTORING !! 
+    using namespace std;
 
-    // convertToGPUFriendly std::shared_ptr<glm::vec4>(vector<T> collection, std::function<void(T)> fill)
-    std::vector<glm::vec4> AABB_GPU;
-    for(auto &aabb : scene->AABBes() ) {
-        AABB_GPU.emplace_back(aabb.min, 0.0f);
-        AABB_GPU.emplace_back(aabb.max, 0.0f);
-    }
+    // TODO need more refactoring
+    // define stuctures
+    // define convert function
+    // convert data
+    // bind SSBO
+    // set num variables in ComputeShader
+    struct GPU_AABB { 
+        glm::vec3 min;
+        float padding;
+        glm::vec3 max;
+        float padding2;
+        GPU_AABB(const glm::vec3 &min, const glm::vec3 &max) : min(min), max(max), padding(0.0f), padding2(0.0f) {}; 
+    };
 
-    AABB_SSBO = std::make_shared<ge::gl::Buffer>(gl->getFunctionTable(), sizeof(glm::vec4) * AABB_GPU.size(), AABB_GPU.data());
-    computeShader->set("num_aabb", static_cast<int>(scene->AABBes().size()));
+    struct GPU_SPHERE {
+        glm::vec3 center;
+        float radius;
+        GPU_SPHERE(const glm::vec3 &center,const float &radius) : center(center), radius(radius) {};
+    };
+
+    struct GPU_CYLINDER {
+        glm::vec3 center;
+        float padding;
+        glm::vec3 direction;
+        float radius;
+        GPU_CYLINDER(const glm::vec3 &center, const glm::vec3 &direction, const float &radius) : 
+            center(center), direction(direction), radius(radius), padding(0.0f) {};
+    };
+
+    auto convert_AABB = [](const msg::AABB &aabb) -> GPU_AABB { return {aabb.min, aabb.max}; };
+    vector<GPU_AABB> gpu_aabb_data; 
+    transform(begin(scene->AABBes()), end(scene->AABBes()), back_inserter(gpu_aabb_data), convert_AABB);
+    AABB_SSBO = make_shared<ge::gl::Buffer>(gl->getFunctionTable(), sizeof(GPU_AABB) * gpu_aabb_data.size(), gpu_aabb_data.data());
     AABB_SSBO->bindBase(GL_SHADER_STORAGE_BUFFER, 1);
+    computeShader->set1i("num_aabb", scene->AABBes().size());
 
-    std::vector<glm::vec4> spheres_GPU;
-    for(auto &sphere : scene->spheres()) {
-        spheres_GPU.emplace_back(sphere.center, sphere.radius);
-    }
-    spheres_SSBO = std::make_shared<ge::gl::Buffer>(gl->getFunctionTable(), sizeof(glm::vec4) * spheres_GPU.size(), spheres_GPU.data());
-    int num_spheres = scene->spheres().size();
-    computeShader->set("num_spheres", num_spheres);
+    auto convert_SPHERE = [](const msg::Sphere &sphere) -> GPU_SPHERE { return {sphere.center, sphere.radius}; };
+    vector<GPU_SPHERE> gpu_sphere_data;
+    transform(scene->spheres().begin(), scene->spheres().end(), back_inserter(gpu_sphere_data), convert_SPHERE);
+    spheres_SSBO = make_shared<ge::gl::Buffer>(gl->getFunctionTable(), sizeof(GPU_SPHERE) * gpu_sphere_data.size(), gpu_sphere_data.data());
     spheres_SSBO->bindBase(GL_SHADER_STORAGE_BUFFER, 2);
+    computeShader->set1i("num_spheres", scene->spheres().size());
 
-
-    std::vector<glm::vec4> cylinder_GPU;
-    for(auto &cylinder : scene->cylinders()) {
-        cylinder_GPU.emplace_back(cylinder.center, cylinder.radius);
-        cylinder_GPU.emplace_back(cylinder.direction, cylinder.radius);
-    }
-    cylinder_SSBO = std::make_shared<ge::gl::Buffer>(gl->getFunctionTable(), sizeof(glm::vec4) * cylinder_GPU.size(), cylinder_GPU.data());
-    int num_cylinders = scene->cylinders().size();
-    computeShader->set("num_cylinders", num_cylinders);
+    auto convert_CYLINDER = [](const msg::Cylinder &cylinder) -> GPU_CYLINDER { return {cylinder.center, cylinder.direction, cylinder.radius}; };
+    vector<GPU_CYLINDER> gpu_cylinder_data;
+    transform(scene->cylinders().begin(), scene->cylinders().end(), back_inserter(gpu_cylinder_data), convert_CYLINDER);
+    cylinder_SSBO = make_shared<ge::gl::Buffer>(gl->getFunctionTable(), sizeof(GPU_CYLINDER) * gpu_cylinder_data.size(), gpu_cylinder_data.data());
     cylinder_SSBO->bindBase(GL_SHADER_STORAGE_BUFFER, 3);
-
-
-
+    computeShader->set1i("num_cylinders", scene->cylinders().size());
 }
 
 void msg::RaytracingTechnique::update() {
