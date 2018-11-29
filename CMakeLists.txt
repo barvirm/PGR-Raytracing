@@ -36,6 +36,8 @@ set(CORE_FILES
 set(GRAPHICS_FILES
     src/graphics/VisualizationTechnique.h
     src/graphics/RaytracingTechnique.h src/graphics/RaytracingTechnique.cpp
+    src/graphics/Scene.h
+    src/graphics/Light.h
 )
 
 SET(GRAPHICS_SHAPES_FILES

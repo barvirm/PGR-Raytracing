@@ -4,6 +4,7 @@ struct Ray { vec3 origin, direction; };
 struct Sphere { vec3 center; float radius; };
 struct Cylinder { vec3 center; float padding; vec3 direction; float radius; };
 struct AABB { vec3 min; float padding0; vec3 max; float padding1; };
+struct Light { vec3 position; float padding0; vec3 color; float padding1; };
 
 layout(binding = 0, rgba32f) uniform image2D framebuffer;
 layout(std140, binding = 10) buffer debug { vec4 debug_out[]; };
@@ -11,14 +12,16 @@ layout(std140, binding = 10) buffer debug { vec4 debug_out[]; };
 layout(std140, binding = 1) buffer AABB_buffer { AABB aabb[]; };
 layout(std140, binding = 2) buffer spheres_buffer { Sphere spheres[]; };
 layout(std140, binding = 3) buffer cylinder_buffer { Cylinder cylinders[]; };
+layout(std140, binding = 4) buffer lights_buffer { Light lights[]; };
 
 
 uniform vec3 eye;
 uniform vec3 ray00, ray01, ray10, ray11;
-uniform int num_aabb, num_spheres, num_cylinders;
+uniform int num_aabb, num_spheres, num_cylinders, num_lights;
 
-struct Light { vec3 position, color; };
+
 const float ambientStrength = 0.1f;
+const float specularStrength = 0.5f;
 
 
 #define MAX_SCENE_BOUNDS 100.0
@@ -28,7 +31,7 @@ const float ambientStrength = 0.1f;
 #define CYLINDER_PRIMITIVE 3
 #define NUM_LIGHTS 1
 
-const Light light = Light(vec3(0,10,0), vec3(0.8));
+const Light light = Light(vec3(0,10,0),0, vec3(0.8),0);
 
 struct hitinfo {
     bool hit;
@@ -183,15 +186,14 @@ bool intersectCylinder(Ray ray, inout hitinfo info) {
     return found;
 }
 
-vec4 trace(Ray ray) {
-    vec4 ambient = vec4(light.color * ambientStrength, 1.0);
+vec3 trace(Ray ray) {
+    vec3 ambient = light.color * ambientStrength;
     hitinfo hitInfo_cameraRay = createHitInfo();
     intersectSpheres(ray, hitInfo_cameraRay);
     intersectAABBes(ray, hitInfo_cameraRay);
     intersectCylinder(ray, hitInfo_cameraRay);
     if ( hitInfo_cameraRay.hit ) {
         // PHONG
-        vec4 color = ambient;
         vec3 ip = intersectionPoint(ray, hitInfo_cameraRay.t);
 
         Ray r = Ray(ip, normalize(light.position - ip));
@@ -210,13 +212,20 @@ vec4 trace(Ray ray) {
             case CYLINDER_PRIMITIVE: normal = getNormalCylinder(cylinders[hitInfo_cameraRay.primitiveIndex], ip); break;
         }
 
+        const vec3 white = vec3(1);
         vec3 lightDir = normalize(light.position - ip);
         float diff = max(dot(normal, lightDir), 0.0);
         vec3 diffuse = diff * light.color;
-        color += vec4(diffuse,0.0);
-        return color;
+
+
+        vec3 viewDir = normalize(eye - ip);
+        vec3 reflectDir = reflect(-lightDir, normal);
+        float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+        vec3 specular = specularStrength * spec * light.color;
+        vec3 result = (ambient + diffuse + specular) * white;
+        return result;
     }
-    return vec4(0.0, 0.0, 0.0, 1.0);
+    return vec3(0);
 }
 
 
@@ -228,6 +237,6 @@ void main(void) {
     vec2 pos = vec2(pixel) / vec2(size.x - 1, size.y - 1);
     vec3 dir = mix(mix(ray00, ray01, pos.y), mix(ray10, ray11, pos.y), pos.x);
     Ray ray = Ray(eye, dir);
-    vec4 color = trace(ray);
+    vec4 color = vec4(trace(ray), 0);
     imageStore(framebuffer, pixel, color);
 }
