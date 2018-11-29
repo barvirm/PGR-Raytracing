@@ -64,25 +64,24 @@ void msg::RaytracingTechnique::setScene(std::shared_ptr<msg::Scene> &_scene) {
             center(center), direction(direction), radius(radius), padding(0.0f) {};
     };
 
+    auto sendToGpuAsSSBO = [this](auto convertToGpuStruct, const auto &col, auto &ssbo, const int &bindingPoint) {
+        using ConvertType = decltype(convertToGpuStruct(col[0]));
+        std::vector<ConvertType> r;
+        transform(begin(col), end(col), back_inserter(r), convertToGpuStruct);
+        ssbo = make_shared<ge::gl::Buffer>(gl->getFunctionTable(), sizeof(ConvertType) * r.size(), r.data());
+        ssbo->bindBase(GL_SHADER_STORAGE_BUFFER, bindingPoint);
+    };
+
     auto convert_AABB = [](const msg::AABB &aabb) -> GPU_AABB { return {aabb.min, aabb.max}; };
-    vector<GPU_AABB> gpu_aabb_data; 
-    transform(begin(scene->AABBes()), end(scene->AABBes()), back_inserter(gpu_aabb_data), convert_AABB);
-    AABB_SSBO = make_shared<ge::gl::Buffer>(gl->getFunctionTable(), sizeof(GPU_AABB) * gpu_aabb_data.size(), gpu_aabb_data.data());
-    AABB_SSBO->bindBase(GL_SHADER_STORAGE_BUFFER, 1);
+    sendToGpuAsSSBO(convert_AABB, scene->AABBes(), AABB_SSBO, 1);
     computeShader->set1i("num_aabb", scene->AABBes().size());
 
     auto convert_SPHERE = [](const msg::Sphere &sphere) -> GPU_SPHERE { return {sphere.center, sphere.radius}; };
-    vector<GPU_SPHERE> gpu_sphere_data;
-    transform(scene->spheres().begin(), scene->spheres().end(), back_inserter(gpu_sphere_data), convert_SPHERE);
-    spheres_SSBO = make_shared<ge::gl::Buffer>(gl->getFunctionTable(), sizeof(GPU_SPHERE) * gpu_sphere_data.size(), gpu_sphere_data.data());
-    spheres_SSBO->bindBase(GL_SHADER_STORAGE_BUFFER, 2);
+    sendToGpuAsSSBO(convert_SPHERE, scene->spheres(), spheres_SSBO, 2);
     computeShader->set1i("num_spheres", scene->spheres().size());
 
     auto convert_CYLINDER = [](const msg::Cylinder &cylinder) -> GPU_CYLINDER { return {cylinder.center, cylinder.direction, cylinder.radius}; };
-    vector<GPU_CYLINDER> gpu_cylinder_data;
-    transform(scene->cylinders().begin(), scene->cylinders().end(), back_inserter(gpu_cylinder_data), convert_CYLINDER);
-    cylinder_SSBO = make_shared<ge::gl::Buffer>(gl->getFunctionTable(), sizeof(GPU_CYLINDER) * gpu_cylinder_data.size(), gpu_cylinder_data.data());
-    cylinder_SSBO->bindBase(GL_SHADER_STORAGE_BUFFER, 3);
+    sendToGpuAsSSBO(convert_CYLINDER, scene->cylinders(), cylinder_SSBO, 3);
     computeShader->set1i("num_cylinders", scene->cylinders().size());
 }
 

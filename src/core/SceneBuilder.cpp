@@ -5,8 +5,10 @@
 
 std::shared_ptr<msg::Scene> SceneBuilder::build() {
     auto scene(std::make_shared<msg::Scene>());
+    
     msg::AABB box1(glm::vec3(-5.0, -0.1, -5.0), glm::vec3(5.0, 0.0, 5.0));
     msg::AABB box2(glm::vec3(-0.5,  0.0, -0.5), glm::vec3(0.5, 1.0, 0.5));
+    
     msg::Sphere s1(glm::vec3(0.0, 3.0, 0.0), 1.0f);
     msg::Sphere s2(glm::vec3(3.0, 3.0, 0.0), 1.0f);
     msg::Cylinder c1(glm::vec3(0), glm::vec3(0.0, 1.0, 0.0), 1.5f);
