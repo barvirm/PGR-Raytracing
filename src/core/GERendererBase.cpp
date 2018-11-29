@@ -10,6 +10,8 @@ msg::GERendererBase::GERendererBase(QObject *parent) :
     _gl(nullptr),
     _viewport(std::make_shared<glm::vec2>(1000,800))
 {
+     ge::gl::init();
+    _gl = std::make_shared<ge::gl::Context>();
     std::cout << "GERendererBase ctor" << std::endl;
 }
 

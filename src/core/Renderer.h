@@ -1,7 +1,8 @@
 #pragma once
 
 #include <core/GERendererBase.h>
-#include <graphics/VisualizationTechnique.h>
+#include <graphics/RaytracingTechnique.h>
+
 namespace ge {
     namespace util {
         class OrbitCamera;
@@ -9,10 +10,6 @@ namespace ge {
     }
 }
 
-namespace msg {
-    class RaytracingTechnique;
-    //class VizualizationTechnique;
-}
 
 
 namespace msg {
@@ -21,6 +18,7 @@ namespace msg {
 
     public:
         Renderer(QObject *parent = nullptr);
+        void setScene(std::shared_ptr<msg::Scene> &_scene);
         void setupGLState();
         std::shared_ptr<ge::util::OrbitCamera> orbitCamera;
         std::shared_ptr<ge::util::PerspectiveCamera> perspectiveCamera;
@@ -33,7 +31,9 @@ namespace msg {
         virtual void onContextCreated() override;
 
         bool _sceneToProcess;
-        std::vector<std::unique_ptr<msg::VisualizationTechnique>> _visualizationTechniques;
+        bool _inicializedVT;
+        std::unique_ptr<msg::RaytracingTechnique> raytracingTechnique;
+        std::shared_ptr<msg::Scene> scene;
 
     private:
         void setupCamera();
