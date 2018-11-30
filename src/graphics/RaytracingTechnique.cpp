@@ -97,9 +97,6 @@ void msg::RaytracingTechnique::update() {
     auto cameraPosition = glm::vec3(glm::inverse(orbitCamera->getView())[3]);
 
     computeShader->use();
-
-
-
     computeShader->set3fv("eye", glm::value_ptr(cameraPosition));
     computeShader->set3fv("ray00", glm::value_ptr(getRay(-1, -1, cameraPosition)));
     computeShader->set3fv("ray01", glm::value_ptr(getRay(-1,  1, cameraPosition)));
