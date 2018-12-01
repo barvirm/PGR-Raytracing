@@ -5,7 +5,7 @@ struct Sphere { vec3 center; float radius; };
 struct Cylinder { vec3 center; float p; vec3 direction; float radius; };
 struct AABB { vec3 min; float p; vec3 max; float p1; };
 struct Light { vec3 position; float p; vec3 color; float p1; };
-struct Material {int reflectFlag; };
+struct Material { vec3 color; float reflectance; };
 
 layout(binding = 0, rgba32f) uniform image2D framebuffer;
 layout(std140, binding = 10) buffer debug { vec4 debug_out[]; };
@@ -15,11 +15,13 @@ layout(std140, binding = 2) readonly buffer spheres_buffer { Sphere spheres[]; }
 layout(std140, binding = 3) readonly buffer cylinder_buffer { Cylinder cylinders[]; };
 layout(std140, binding = 4) readonly buffer lights_buffer { Light lights[]; };
 layout(std140, binding = 5) readonly buffer material_buffer { Material materials[]; };
+layout(std140, binding = 6) readonly buffer startMaterialIndex { int primitiveMaterialBegin[]; };
 
 
 uniform vec3 eye;
 uniform vec3 ray00, ray01, ray10, ray11;
 uniform int num_aabb, num_spheres, num_cylinders, num_lights;
+uniform ivec4 ps;
 
 
 const float ambientStrength = 0.1f;
@@ -31,8 +33,8 @@ const float specularStrength = 0.5f;
 #define AABB_PRIMITIVE 1
 #define SPHERE_PRIMITIVE 2
 #define CYLINDER_PRIMITIVE 3
-#define RECURSION 15
-#define EPSILON 0.00001
+#define NUM_REFLECTION 2
+#define EPSILON 0.001
 
 struct hitinfo {
     bool hit;
@@ -80,12 +82,6 @@ vec3 getNormalAABB(AABB aabb, vec3 cubePoint) {
 
 
 }
-
-vec3 getRayHitPoint(Ray ray, float t) {
-    return ray.origin + ray.direction * t;
-}
-
-
 
 // INTERSECTION POINT RAY x SHAPE
 vec2 intersectAABB(Ray ray, const AABB b) {
@@ -139,6 +135,8 @@ vec2 intersectSphere(Ray ray, const Sphere s) {
     return vec2(min(t1,t2), max(t1,t2));
 };
 
+
+
 bool intersectSpheres(Ray ray, inout hitinfo info) {
     bool found = false;
     for(int i = 0; i < num_spheres; ++i) {
@@ -180,7 +178,7 @@ bool intersectCylinder(Ray ray, inout hitinfo info) {
     bool found = false;
     for(int i = 0; i < num_cylinders; ++i) {
         vec2 l = intersectCylinder(ray, cylinders[i]);
-        if (l.x > 0.0 && l.x < l.t) {
+        if (l.x > 0.0  && l.x < info.t ) {
             info.primitiveIndex = i;
             info.primitive_type = CYLINDER_PRIMITIVE;
             info.hit = true;
@@ -213,29 +211,24 @@ bool isInShadow(hitinfo hitInfo, vec3 intersectionPoint, Light light) {
     return test;
 }
 
-vec3 PhongShadingPerLight(Light light, vec3 intersectionPoint, vec3 normal, hitinfo shadowHitInfo) {
+vec3 PhongShadingPerLight(Light light, vec3 intersectionPoint, vec3 normal, hitinfo shadowHitInfo, Material material) {
     vec3 ambient = light.color * ambientStrength;
-    if ( isInShadow(shadowHitInfo, intersectionPoint, light) ) { 
-        return ambient; 
-    }
+    if ( isInShadow(shadowHitInfo, intersectionPoint, light) ) { return ambient; }
 
     // diffuse
     vec3 lightDir = normalize(light.position - intersectionPoint);
     float diff = max(dot(normal, lightDir), 0.0);
     vec3 diffuse = diff * light.color;
 
-
-    const vec3 white = vec3(1); // TODO should be Material Component
-
     // specular
     vec3 viewDir = normalize(eye - intersectionPoint);
     vec3 reflectDir = reflect(-lightDir, normal);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
     vec3 specular = specularStrength * spec * light.color;
-    return (ambient + diffuse + specular) * white;
+    return (ambient + diffuse + specular) * material.color;
 }
 
-vec3 lightning(vec3 intersectionPoint, vec3 normal, hitinfo hitInfo_cameraRay) {
+vec3 getColor(vec3 intersectionPoint, vec3 normal, Material material) {
     vec3 color = vec3(0);
     for(int i = 0; i < num_lights; ++i) {
         Light light = lights[i];
@@ -244,51 +237,43 @@ vec3 lightning(vec3 intersectionPoint, vec3 normal, hitinfo hitInfo_cameraRay) {
         hitinfo shadowHitInfo = createHitInfo();
         findIntersect(shadowRay, shadowHitInfo);
 
-        color += PhongShadingPerLight(light, intersectionPoint, normal, shadowHitInfo);
+
+        color += PhongShadingPerLight(light, intersectionPoint, normal, shadowHitInfo, material);
     }
     return color;
 }
 
-float isMirror(hitinfo hitInfo) {
-    if (hitInfo.primitiveIndex == 0 && hitInfo.primitive_type == AABB_PRIMITIVE ||
-         (hitInfo.primitiveIndex == 0 && hitInfo.primitive_type == SPHERE_PRIMITIVE) ) 
-    {
-        return 1.0f;
-    }
-    else {
-        return 0.0f;
-    }
-}
-
 vec3 trace(Ray ray) {
     vec3 color = vec3(0);
-    hitinfo hitInfo_cameraRay = createHitInfo();
-    findIntersect(ray, hitInfo_cameraRay);
-    if ( hitInfo_cameraRay.hit ) {
-        vec3 intersectionPoint = getIntersectionPoint(ray, hitInfo_cameraRay.t);
-        vec3 normal = getNormal(hitInfo_cameraRay, intersectionPoint);
-        color += lightning(intersectionPoint, normal, hitInfo_cameraRay) * (1.0 - isMirror(hitInfo_cameraRay));
+    hitinfo hitInfoCamera = createHitInfo();
+    findIntersect(ray, hitInfoCamera);
+    if ( hitInfoCamera.hit ) {
+        vec3 intersectionPoint = getIntersectionPoint(ray, hitInfoCamera.t);
+        vec3 normal = getNormal(hitInfoCamera, intersectionPoint);
+        int materialBaseIndex = ps[hitInfoCamera.primitive_type-1];
+        Material material = materials[materialBaseIndex + hitInfoCamera.primitiveIndex];
 
-        if ( isMirror(hitInfo_cameraRay) == 1.0f) {
+        color += getColor(intersectionPoint, normal, material) * (1.0 - material.reflectance);
+
+        if ( material.reflectance > 0.0f) {
             float frac = 1.0;
 
-            // Ray reflectedRay = Ray(intersectionPoint, normalize(ray.direction - 2*(ray.direction*normal) * normal));
             Ray reflectedRay = Ray(intersectionPoint, normalize(reflect(ray.direction, normal)));
             reflectedRay.origin += reflectedRay.direction * 0.001; // Shift Ray
-            for (int i = 0; i < RECURSION; ++i) {
-                hitinfo hi = createHitInfo();
-                findIntersect(reflectedRay, hi);
-                if ( !hi.hit ) { return vec3(0); }
+            // vec3 reflectColor = vec3(0);
+            for (int i = 0; i < NUM_REFLECTION; ++i) {
+                hitinfo hitInfoReflected = createHitInfo();
+                findIntersect(reflectedRay, hitInfoReflected);
+                if ( !hitInfoReflected.hit ) { return color; }
                 
-                vec3 ip = getIntersectionPoint(reflectedRay, hi.t);
-                vec3 normal = getNormal(hi, ip);
-                color += lightning(ip, normal, hi) * frac;
-                frac *= isMirror(hi);
-                if ( isMirror(hi) != 1.0f ) {
-                    return color;
-                }
+                vec3 ip = getIntersectionPoint(reflectedRay, hitInfoReflected.t);
+                vec3 normal = getNormal(hitInfoReflected, ip);
+                const int startIndex = ps[hitInfoReflected.primitive_type-1];
+                Material reflectedMaterial = materials[startIndex + hitInfoReflected.primitiveIndex];
+                frac *= reflectedMaterial.reflectance;
+                color += getColor(intersectionPoint, normal, reflectedMaterial) * material.reflectance;
+                if ( frac < 0.1f ) { return color; }
 
-                // reflectedRay = Ray(ip, normalize(reflectedRay.direction - 2*(reflectedRay.direction*normal) * normal));
                 reflectedRay = Ray(ip, normalize(reflect(reflectedRay.direction, normal)));
                 reflectedRay.origin += reflectedRay.direction * 0.001; // Shift Ray
             }

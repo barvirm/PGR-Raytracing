@@ -1,23 +1,25 @@
 #pragma once
 
 #include <vector>
+#include <unordered_map>
 #include <graphics/Shapes.h>
 #include <graphics/Light.h>
+#include <graphics/Material.h>
 
 namespace msg {
     class Scene {
         public:
-            Scene() : _dirty(false) {};
-            inline void addShape(msg::AABB &aabb) { _dirty = true; _AABBes.emplace_back(aabb); }
-            inline void addShape(msg::Sphere &sphere) { _dirty = true; _spheres.emplace_back(sphere); }
-            inline void addShape(msg::Cylinder &cylinder) { _dirty = true; _cylinders.emplace_back(cylinder); }
-            inline void addLight(msg::Light &light) { _dirty = true; _lights.emplace_back(light); {}}
-            inline bool isDirty() const { return _dirty; }
+            Scene() = default;
+            void addShape(msg::AABB &aabb, msg::Material material = msg::Material(glm::vec3(1), 0.0f));
+            void addShape(msg::Sphere &sphere, msg::Material material = msg::Material(glm::vec3(0,1,0), 0.0f));
+            void addShape(msg::Cylinder &cylinder, msg::Material material = msg::Material(glm::vec3(1), 0.0f));
+            void addLight(msg::Light &light) { _lights.emplace_back(light); {}}
 
             inline std::vector<msg::Sphere> &spheres() { return  _spheres; }
             inline std::vector<msg::AABB> &AABBes() { return  _AABBes; }
             inline std::vector<msg::Cylinder> &cylinders() { return  _cylinders; }
             inline std::vector<msg::Light> &lights() { return _lights; }
+            inline std::vector<msg::Material> &materials() { return _materials; }
 
             // gettors
         protected:
@@ -25,6 +27,6 @@ namespace msg {
             std::vector<msg::AABB> _AABBes;
             std::vector<msg::Cylinder> _cylinders;
             std::vector<msg::Light> _lights;
-            bool _dirty;
+            std::vector<msg::Material> _materials;
     };
 }

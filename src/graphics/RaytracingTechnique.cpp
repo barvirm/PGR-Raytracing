@@ -1,12 +1,16 @@
 #include <graphics/RaytracingTechnique.h>
+#include <graphics/Scene.h>
+
 #include <iostream>
+#include <numeric>
+
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
+
 #include <geUtil/OrbitCamera.h>
 #include <geUtil/PerspectiveCamera.h>
-
-#include <graphics/Scene.h>
 #include <geGL/geGL.h>
+
 
 void msg::RaytracingTechnique::init() {
 
@@ -66,29 +70,64 @@ void msg::RaytracingTechnique::setScene(std::shared_ptr<msg::Scene> &_scene) {
         GPU_LIGHT(const glm::vec3 &position, const glm::vec3 &color) : position(position), color(color), p(0.0f), x(0.0f) {};
     };
 
-    auto sendToGpuAsSSBO = [this](auto convertToGpuStruct, const auto &col, auto &ssbo, const int &bindingPoint) {
-        using ConvertType = decltype(convertToGpuStruct(col[0]));
-        std::vector<ConvertType> r;
-        transform(begin(col), end(col), back_inserter(r), convertToGpuStruct);
-        ssbo = make_shared<ge::gl::Buffer>(gl->getFunctionTable(), sizeof(ConvertType) * r.size(), r.data());
+    auto transformToGpuStruct = [](auto convertToGpuStructFunction, const auto &collection) {
+        using ConvertType = decltype(convertToGpuStructFunction(collection[0]));
+        vector<ConvertType> preparedGpuStruct;
+        transform(begin(collection), end(collection), back_inserter(preparedGpuStruct), convertToGpuStructFunction);
+        return preparedGpuStruct;
+    };
+
+    auto sendToGpuAsSSBO = [this](auto &data, auto &ssbo, const int &bindingPoint) {
+        using GPU_DATA_TYPE = decltype(data[0]);
+        ssbo = make_shared<ge::gl::Buffer>(gl->getFunctionTable(), sizeof(GPU_DATA_TYPE) * data.size(), data.data());
         ssbo->bindBase(GL_SHADER_STORAGE_BUFFER, bindingPoint);
     };
 
+
     auto convert_AABB = [](const msg::AABB &aabb) -> GPU_AABB { return {aabb.min, aabb.max}; };
-    sendToGpuAsSSBO(convert_AABB, scene->AABBes(), AABB_SSBO, 1);
-    computeShader->set1i("num_aabb", scene->AABBes().size());
+    auto GpuAABBes = transformToGpuStruct(convert_AABB, scene->AABBes());
+    sendToGpuAsSSBO(GpuAABBes, AABB_SSBO, 1);
+    int num_aabb = scene->AABBes().size();
+    computeShader->set1i("num_aabb", num_aabb);
 
     auto convert_SPHERE = [](const msg::Sphere &sphere) -> GPU_SPHERE { return {sphere.center, sphere.radius}; };
-    sendToGpuAsSSBO(convert_SPHERE, scene->spheres(), spheres_SSBO, 2);
-    computeShader->set1i("num_spheres", scene->spheres().size());
+    auto GpuSpheres = transformToGpuStruct(convert_SPHERE, scene->spheres());
+    sendToGpuAsSSBO(GpuSpheres, spheres_SSBO, 2);
+    int num_spheres = scene->spheres().size();
+    computeShader->set1i("num_spheres", num_spheres);
 
     auto convert_CYLINDER = [](const msg::Cylinder &cylinder) -> GPU_CYLINDER { return {cylinder.center, cylinder.direction, cylinder.radius}; };
-    sendToGpuAsSSBO(convert_CYLINDER, scene->cylinders(), cylinder_SSBO, 3);
-    computeShader->set1i("num_cylinders", scene->cylinders().size());
+    auto GpuCylinders = transformToGpuStruct(convert_CYLINDER, scene->cylinders());
+    sendToGpuAsSSBO(GpuCylinders, cylinder_SSBO, 3);
+    int num_cylinders = scene->cylinders().size();
+    computeShader->set1i("num_cylinders", num_cylinders);
 
     auto convert_LIGHT = [](const msg::Light &light) -> GPU_LIGHT { return {light.position, light.color}; };
-    sendToGpuAsSSBO(convert_LIGHT, scene->lights(), light_SSBO, 4);
+    auto GpuLights = transformToGpuStruct(convert_LIGHT, scene->lights());
+    sendToGpuAsSSBO(GpuLights, light_SSBO, 4);
     computeShader->set1i("num_lights", scene->lights().size());
+
+    sendToGpuAsSSBO(scene->materials(), material_SSBO, 5);
+    std::vector<int> materialStartIndex {0, num_aabb, num_spheres, num_cylinders};
+    std::partial_sum(begin(materialStartIndex), end(materialStartIndex), begin(materialStartIndex));
+    computeShader->set4iv("ps", materialStartIndex.data());
+    ps_material_SSBO = make_shared<ge::gl::Buffer>(gl->getFunctionTable(), sizeof(int) * 4, materialStartIndex.data());
+    ps_material_SSBO->bindBase(GL_SHADER_STORAGE_BUFFER, 6);
+    std::cout << "--" << std::endl;
+    for(auto &x : materialStartIndex) {
+        std::cout << x << std::endl;
+    }
+    std::cout << "--" << std::endl;
+    // sendToGpuAsSSBO(materialStartIndex, ps_material_SSBO, 6);
+    for(auto &m : scene->materials()) {
+        std::cout << to_string(m.objectColor) << std::endl;
+    }
+    std::cout << "--" << std::endl;
+
+
+
+    
+    
 }
 
 void msg::RaytracingTechnique::update() {
@@ -125,7 +164,10 @@ void msg::RaytracingTechnique::update() {
         1
     );
     gl->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-
+    auto *dbg = static_cast<glm::vec4 *>(gl->glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY)); 
+    std::cout << to_string(dbg[0]) << std::endl;
+    std::cout << to_string(dbg[1]) << std::endl;
+    std::cout << "\n";
 /*
     auto *dbg = static_cast<glm::vec4 *>(gl->glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
     for(auto i = 0; i < 3; ++i) {
