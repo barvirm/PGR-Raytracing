@@ -20,13 +20,14 @@ std::shared_ptr<msg::Scene> SceneBuilder::build() {
 
     msg::Material mirrorMat(glm::vec3(1), 0.5f);
     msg::Material fmirrorMat(glm::vec3(1), 1.0f);
+    msg::Material red(glm::vec3(1,0,0));
     scene->addShape(box3, fmirrorMat);
     scene->addShape(box2);
     scene->addShape(box1);
     scene->addShape(s1, mirrorMat);
     scene->addShape(s2);
 
-    scene->addShape(c1);
+    scene->addShape(c1, red);
     scene->addLight(l1);
     scene->addLight(l2);
     return scene;

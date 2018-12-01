@@ -11,7 +11,7 @@ namespace msg {
         public:
             Scene() = default;
             void addShape(msg::AABB &aabb, msg::Material material = msg::Material(glm::vec3(1), 0.0f));
-            void addShape(msg::Sphere &sphere, msg::Material material = msg::Material(glm::vec3(0,1,0), 0.0f));
+            void addShape(msg::Sphere &sphere, msg::Material material = msg::Material(glm::vec3(1), 0.0f));
             void addShape(msg::Cylinder &cylinder, msg::Material material = msg::Material(glm::vec3(1), 0.0f));
             void addLight(msg::Light &light) { _lights.emplace_back(light); {}}
 

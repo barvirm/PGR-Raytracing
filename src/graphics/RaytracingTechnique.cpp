@@ -111,23 +111,6 @@ void msg::RaytracingTechnique::setScene(std::shared_ptr<msg::Scene> &_scene) {
     std::vector<int> materialStartIndex {0, num_aabb, num_spheres, num_cylinders};
     std::partial_sum(begin(materialStartIndex), end(materialStartIndex), begin(materialStartIndex));
     computeShader->set4iv("ps", materialStartIndex.data());
-    ps_material_SSBO = make_shared<ge::gl::Buffer>(gl->getFunctionTable(), sizeof(int) * 4, materialStartIndex.data());
-    ps_material_SSBO->bindBase(GL_SHADER_STORAGE_BUFFER, 6);
-    std::cout << "--" << std::endl;
-    for(auto &x : materialStartIndex) {
-        std::cout << x << std::endl;
-    }
-    std::cout << "--" << std::endl;
-    // sendToGpuAsSSBO(materialStartIndex, ps_material_SSBO, 6);
-    for(auto &m : scene->materials()) {
-        std::cout << to_string(m.objectColor) << std::endl;
-    }
-    std::cout << "--" << std::endl;
-
-
-
-    
-    
 }
 
 void msg::RaytracingTechnique::update() {
@@ -164,18 +147,6 @@ void msg::RaytracingTechnique::update() {
         1
     );
     gl->glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-    auto *dbg = static_cast<glm::vec4 *>(gl->glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY)); 
-    std::cout << to_string(dbg[0]) << std::endl;
-    std::cout << to_string(dbg[1]) << std::endl;
-    std::cout << "\n";
-/*
-    auto *dbg = static_cast<glm::vec4 *>(gl->glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
-    for(auto i = 0; i < 3; ++i) {
-        std::cout << to_string(dbg[i]) << "\n ";
-    }
-    std::cout << std::endl;
-*/
-
 }
 
 glm::vec3 msg::RaytracingTechnique::getRay(float x, float y,const glm::vec3 &eye) {
@@ -188,24 +159,13 @@ glm::vec3 msg::RaytracingTechnique::getRay(float x, float y,const glm::vec3 &eye
     return ray;
 }
 
-std::string msg::RaytracingTechnique::to_string(const glm::vec4 &d) {
-    std::string res = "";
-    res += std::to_string(d.x) + " ";
-    res += std::to_string(d.y) + " ";
-    res += std::to_string(d.z) + " ";
-    res += std::to_string(d.w);
-    return res;
-}
-
-std::string msg::RaytracingTechnique::to_string(const glm::ivec3 &d) {
-    std::string res = "";
-    res += std::to_string(d.x) + " ";
-    res += std::to_string(d.y) + " ";
-    res += std::to_string(d.z);
-    return res;
-}
-
 void msg::RaytracingTechnique::onViewportChanged() {
     std::cout << "RaytracingTechnique onViewportChanged" << std::endl;
-    texture->setData2D(NULL, GL_RGBA, GL_FLOAT, 0, 0, 0, viewport->x, viewport->y);
+    std::cout << viewport->x << " " << viewport->y << std::endl;
+    gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, viewport->x, viewport->y, 0, GL_RGBA, GL_FLOAT, NULL);
+    // texture->setData2D(NULL, GL_RGBA, GL_FLOAT, 0, 0, 0, viewport->x, viewport->y);
+    // texture = std::make_shared<ge::gl::Texture>(gl->getFunctionTable(), GL_TEXTURE_2D, GL_RGBA32F, 0, viewport->x, viewport->y);
+    // texture->texParameteri(GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    // texture->texParameteri(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    // drawProgram->set("tex", texture->getId());
 }

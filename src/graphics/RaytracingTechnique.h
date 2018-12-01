@@ -45,7 +45,7 @@ namespace msg {
         void init();
         void update();
         void draw();
-        void onViewportChanged();
+        void onViewportChanged(); 
         void setScene(std::shared_ptr<msg::Scene> &_scene);
 
         std::shared_ptr<ge::gl::Program> program;
@@ -62,7 +62,6 @@ namespace msg {
     protected:
         std::shared_ptr<ge::gl::Texture> texture; 
         std::shared_ptr<ge::gl::VertexArray> VAO;
-        std::shared_ptr<ge::gl::Buffer> SSBO;
 
         std::shared_ptr<ge::gl::Buffer> AABB_SSBO;
         std::shared_ptr<ge::gl::Buffer> spheres_SSBO;
@@ -73,10 +72,6 @@ namespace msg {
 
         glm::ivec3 workingGroupLayout;
         glm::vec3 getRay(float x, float y,const glm::vec3 &eye);
-
-        std::string to_string(const glm::vec4 &d);
-        std::string to_string(const glm::ivec3 &d);
-
     };
 }
 

@@ -36,15 +36,15 @@ const float specularStrength = 0.5f;
 #define NUM_REFLECTION 2
 #define EPSILON 0.001
 
-struct hitinfo {
+struct Hitinfo {
     bool hit;
     float t;
     int primitiveIndex;
     int primitive_type;
 };
 
-hitinfo createHitInfo() {
-    hitinfo i;
+Hitinfo createHitInfo() {
+    Hitinfo i;
     i.t = MAX_SCENE_BOUNDS;
     i.hit = false;
     return i;
@@ -83,6 +83,14 @@ vec3 getNormalAABB(AABB aabb, vec3 cubePoint) {
 
 }
 
+vec3 getNormal(Hitinfo hitInfo, vec3 intersectionPoint) {
+    switch(hitInfo.primitive_type) {
+        case AABB_PRIMITIVE: return getNormalAABB(aabb[hitInfo.primitiveIndex], intersectionPoint); 
+        case SPHERE_PRIMITIVE: return getNormalSphere(spheres[hitInfo.primitiveIndex], intersectionPoint); 
+        case CYLINDER_PRIMITIVE: return getNormalCylinder(cylinders[hitInfo.primitiveIndex], intersectionPoint);
+    }
+}
+
 // INTERSECTION POINT RAY x SHAPE
 vec2 intersectAABB(Ray ray, const AABB b) {
     vec3 invDir = 1.0f / ray.direction;
@@ -95,7 +103,7 @@ vec2 intersectAABB(Ray ray, const AABB b) {
     return vec2(tNear, tFar);
 }
 
-bool intersectAABBes(Ray ray, inout hitinfo info) {
+bool intersectAABBes(Ray ray, inout Hitinfo info) {
     bool found = false;
     for (int i = 0; i < num_aabb; i++) {
         vec2 l = intersectAABB(ray, aabb[i]);
@@ -137,7 +145,7 @@ vec2 intersectSphere(Ray ray, const Sphere s) {
 
 
 
-bool intersectSpheres(Ray ray, inout hitinfo info) {
+bool intersectSpheres(Ray ray, inout Hitinfo info) {
     bool found = false;
     for(int i = 0; i < num_spheres; ++i) {
         vec2 l = intersectSphere(ray, spheres[i]);
@@ -173,7 +181,7 @@ vec2 intersectCylinder(Ray r, const Cylinder c) {
 
 }
 
-bool intersectCylinder(Ray ray, inout hitinfo info) {
+bool intersectCylinder(Ray ray, inout Hitinfo info) {
     float smallest = MAX_SCENE_BOUNDS;
     bool found = false;
     for(int i = 0; i < num_cylinders; ++i) {
@@ -189,7 +197,7 @@ bool intersectCylinder(Ray ray, inout hitinfo info) {
     return found;
 }
 
-void findIntersect(Ray ray, inout hitinfo hitInfo) {
+void findIntersect(Ray ray, inout Hitinfo hitInfo) {
     intersectSpheres(ray, hitInfo);
     intersectAABBes(ray, hitInfo);
     intersectCylinder(ray, hitInfo);
@@ -198,20 +206,14 @@ void findIntersect(Ray ray, inout hitinfo hitInfo) {
 
 
 
-vec3 getNormal(hitinfo hitInfo, vec3 intersectionPoint) {
-    switch(hitInfo.primitive_type) {
-        case AABB_PRIMITIVE: return getNormalAABB(aabb[hitInfo.primitiveIndex], intersectionPoint); 
-        case SPHERE_PRIMITIVE: return getNormalSphere(spheres[hitInfo.primitiveIndex], intersectionPoint); 
-        case CYLINDER_PRIMITIVE: return getNormalCylinder(cylinders[hitInfo.primitiveIndex], intersectionPoint);
-    }
-}
 
-bool isInShadow(hitinfo hitInfo, vec3 intersectionPoint, Light light) {
+
+bool isInShadow(Hitinfo hitInfo, vec3 intersectionPoint, Light light) {
     bool test = hitInfo.hit && hitInfo.t < distance(light.position, intersectionPoint);
     return test;
 }
 
-vec3 PhongShadingPerLight(Light light, vec3 intersectionPoint, vec3 normal, hitinfo shadowHitInfo, Material material) {
+vec3 PhongShadingPerLight(Light light, vec3 intersectionPoint, vec3 normal, Hitinfo shadowHitInfo, Material material) {
     vec3 ambient = light.color * ambientStrength;
     if ( isInShadow(shadowHitInfo, intersectionPoint, light) ) { return ambient; }
 
@@ -234,7 +236,7 @@ vec3 getColor(vec3 intersectionPoint, vec3 normal, Material material) {
         Light light = lights[i];
         Ray shadowRay = Ray(intersectionPoint, normalize(light.position - intersectionPoint));
         shadowRay.origin += shadowRay.direction * 0.0001; // Shift Ray
-        hitinfo shadowHitInfo = createHitInfo();
+        Hitinfo shadowHitInfo = createHitInfo();
         findIntersect(shadowRay, shadowHitInfo);
 
 
@@ -245,7 +247,7 @@ vec3 getColor(vec3 intersectionPoint, vec3 normal, Material material) {
 
 vec3 trace(Ray ray) {
     vec3 color = vec3(0);
-    hitinfo hitInfoCamera = createHitInfo();
+    Hitinfo hitInfoCamera = createHitInfo();
     findIntersect(ray, hitInfoCamera);
     if ( hitInfoCamera.hit ) {
         vec3 intersectionPoint = getIntersectionPoint(ray, hitInfoCamera.t);
@@ -256,13 +258,12 @@ vec3 trace(Ray ray) {
         color += getColor(intersectionPoint, normal, material) * (1.0 - material.reflectance);
 
         if ( material.reflectance > 0.0f) {
-            float frac = 1.0;
+            float frac = material.reflectance;
 
             Ray reflectedRay = Ray(intersectionPoint, normalize(reflect(ray.direction, normal)));
             reflectedRay.origin += reflectedRay.direction * 0.001; // Shift Ray
-            // vec3 reflectColor = vec3(0);
             for (int i = 0; i < NUM_REFLECTION; ++i) {
-                hitinfo hitInfoReflected = createHitInfo();
+                Hitinfo hitInfoReflected = createHitInfo();
                 findIntersect(reflectedRay, hitInfoReflected);
                 if ( !hitInfoReflected.hit ) { return color; }
                 
@@ -270,8 +271,8 @@ vec3 trace(Ray ray) {
                 vec3 normal = getNormal(hitInfoReflected, ip);
                 const int startIndex = ps[hitInfoReflected.primitive_type-1];
                 Material reflectedMaterial = materials[startIndex + hitInfoReflected.primitiveIndex];
+                color += getColor(ip, normal, reflectedMaterial) * frac;
                 frac *= reflectedMaterial.reflectance;
-                color += getColor(intersectionPoint, normal, reflectedMaterial) * material.reflectance;
                 if ( frac < 0.1f ) { return color; }
 
                 reflectedRay = Ray(ip, normalize(reflect(reflectedRay.direction, normal)));
