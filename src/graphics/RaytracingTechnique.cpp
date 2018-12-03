@@ -70,6 +70,7 @@ void msg::RaytracingTechnique::setScene(std::shared_ptr<msg::Scene> &_scene) {
         GPU_LIGHT(const glm::vec3 &position, const glm::vec3 &color) : position(position), color(color), p(0.0f), x(0.0f) {};
     };
 
+    // Convert CPU representation without padding to GPU representation with padding
     auto transformToGpuStruct = [](auto convertToGpuStructFunction, const auto &collection) {
         using ConvertType = decltype(convertToGpuStructFunction(collection[0]));
         vector<ConvertType> preparedGpuStruct;
@@ -77,6 +78,7 @@ void msg::RaytracingTechnique::setScene(std::shared_ptr<msg::Scene> &_scene) {
         return preparedGpuStruct;
     };
 
+    // Bind converted GPU representation of data to SSBO 
     auto sendToGpuAsSSBO = [this](auto &data, auto &ssbo, const int &bindingPoint) {
         using GPU_DATA_TYPE = decltype(data[0]);
         ssbo = make_shared<ge::gl::Buffer>(gl->getFunctionTable(), sizeof(GPU_DATA_TYPE) * data.size(), data.data());
@@ -119,17 +121,14 @@ void msg::RaytracingTechnique::update() {
     auto cameraPosition = glm::vec3(glm::inverse(orbitCamera->getView())[3]);
 
     computeShader->use();
-    computeShader->set3fv("eye", glm::value_ptr(cameraPosition));
+    computeShader->set3fv("cameraPosition", glm::value_ptr(cameraPosition));
     computeShader->set3fv("ray00", glm::value_ptr(getRay(-1, -1, cameraPosition)));
     computeShader->set3fv("ray01", glm::value_ptr(getRay(-1,  1, cameraPosition)));
     computeShader->set3fv("ray10", glm::value_ptr(getRay( 1, -1, cameraPosition)));
     computeShader->set3fv("ray11", glm::value_ptr(getRay( 1,  1, cameraPosition)));
 
-    //std::cout << viewport->x << " " << viewport->y << std::endl;
-    auto debug(std::make_shared<ge::gl::Buffer>(gl->getFunctionTable(), sizeof(glm::vec4) * 100));
     
     texture->bindImage(0, 0, GL_RGBA32F, GL_WRITE_ONLY, false, 0);
-    debug->bindBase(GL_SHADER_STORAGE_BUFFER, 10);
 
     auto roundUpToPowerOfTwo = [](int x) -> int { 
         x--;
@@ -163,9 +162,4 @@ void msg::RaytracingTechnique::onViewportChanged() {
     std::cout << "RaytracingTechnique onViewportChanged" << std::endl;
     std::cout << viewport->x << " " << viewport->y << std::endl;
     gl->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, viewport->x, viewport->y, 0, GL_RGBA, GL_FLOAT, NULL);
-    // texture->setData2D(NULL, GL_RGBA, GL_FLOAT, 0, 0, 0, viewport->x, viewport->y);
-    // texture = std::make_shared<ge::gl::Texture>(gl->getFunctionTable(), GL_TEXTURE_2D, GL_RGBA32F, 0, viewport->x, viewport->y);
-    // texture->texParameteri(GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    // texture->texParameteri(GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    // drawProgram->set("tex", texture->getId());
 }

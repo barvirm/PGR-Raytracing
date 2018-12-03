@@ -68,7 +68,6 @@ namespace msg {
         std::shared_ptr<ge::gl::Buffer> cylinder_SSBO;
         std::shared_ptr<ge::gl::Buffer> light_SSBO;
         std::shared_ptr<ge::gl::Buffer> material_SSBO;
-        std::shared_ptr<ge::gl::Buffer> ps_material_SSBO;
 
         glm::ivec3 workingGroupLayout;
         glm::vec3 getRay(float x, float y,const glm::vec3 &eye);

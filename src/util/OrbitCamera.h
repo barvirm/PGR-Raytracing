@@ -5,6 +5,7 @@
 #include<glm/gtc/type_ptr.hpp>
 #include<glm/gtc/matrix_access.hpp>
 
+// Prevzany kod https://github.com/Rendering-FIT/GPUEngine
 
 namespace ge{
   namespace util{

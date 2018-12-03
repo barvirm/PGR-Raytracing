@@ -2,9 +2,10 @@
 
 #include <glm/glm.hpp>
 
+// Prevzany kod https://github.com/Rendering-FIT/GPUEngine
 namespace ge{
   namespace util{
-    class PerspectiveCamera: {
+    class PerspectiveCamera {
       public:
         PerspectiveCamera(
             float fovy   = glm::radians(90.f),

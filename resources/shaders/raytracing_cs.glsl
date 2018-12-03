@@ -18,7 +18,7 @@ layout(std140, binding = 5) readonly buffer material_buffer { Material materials
 layout(std140, binding = 6) readonly buffer startMaterialIndex { int primitiveMaterialBegin[]; };
 
 
-uniform vec3 eye;
+uniform vec3 cameraPosition;
 uniform vec3 ray00, ray01, ray10, ray11;
 uniform int num_aabb, num_spheres, num_cylinders, num_lights;
 uniform ivec4 ps;
@@ -33,8 +33,7 @@ const float specularStrength = 0.5f;
 #define AABB_PRIMITIVE 1
 #define SPHERE_PRIMITIVE 2
 #define CYLINDER_PRIMITIVE 3
-#define NUM_REFLECTION 2
-#define EPSILON 0.001
+#define NUM_REFLECTION 4
 
 struct Hitinfo {
     bool hit;
@@ -67,20 +66,13 @@ vec3 getNormalCylinder(Cylinder c, vec3 cylinderPoint) {
 }
 
 vec3 getNormalAABB(AABB aabb, vec3 cubePoint) {
-    if (cubePoint.x < aabb.min.x + EPSILON)
-        return vec3(-1.0, 0.0, 0.0);
-    else if (cubePoint.x > aabb.max.x - EPSILON)
-        return vec3(1.0, 0.0, 0.0);
-    else if (cubePoint.y < aabb.min.y + EPSILON)
-        return vec3(0.0, -1.0, 0.0);
-    else if (cubePoint.y > aabb.max.y - EPSILON)
-        return vec3(0.0, 1.0, 0.0);
-    else if (cubePoint.z < aabb.min.z + EPSILON)
-        return vec3(0.0, 0.0, -1.0);
-    else
-        return vec3(0.0, 0.0, 1.0);
-
-
+    const float e = 0.001f;
+    if (cubePoint.x < aabb.min.x + e) return vec3(-1.0,  0.0,  0.0);
+    if (cubePoint.x > aabb.max.x - e) return vec3( 1.0,  0.0,  0.0);
+    if (cubePoint.y < aabb.min.y + e) return vec3( 0.0, -1.0,  0.0);
+    if (cubePoint.y > aabb.max.y - e) return vec3( 0.0,  1.0,  0.0);
+    if (cubePoint.z < aabb.min.z + e) return vec3( 0.0,  0.0, -1.0);
+    return vec3(0.0, 0.0, 1.0);
 }
 
 vec3 getNormal(Hitinfo hitInfo, vec3 intersectionPoint) {
@@ -93,6 +85,7 @@ vec3 getNormal(Hitinfo hitInfo, vec3 intersectionPoint) {
 
 // INTERSECTION POINT RAY x SHAPE
 vec2 intersectAABB(Ray ray, const AABB b) {
+    // Taktez prevzany kod z dole uveneho github-u.
     vec3 invDir = 1.0f / ray.direction;
     vec3 tMin = (b.min - ray.origin) * invDir;
     vec3 tMax = (b.max - ray.origin) * invDir;
@@ -120,10 +113,14 @@ bool intersectAABBes(Ray ray, inout Hitinfo info) {
 
 void solveQuadratic(float A, float B, float C, out float x1, out float x2) {
     float D = B*B - 4*A*C;
-    if (D < 0.0f) { x1 = -1.0f; x2 = -1.0f; }
+    if (D < 0.0f) { 
+        x1 = -1.0f; 
+        x2 = -1.0f; 
+    }
     else if ( D == 0.0f) {
         float x = (-B - sqrt(D)) / (2*A);
-        x1 = x; x2 = MAX_SCENE_BOUNDS;
+        x1 = x; 
+        x2 = MAX_SCENE_BOUNDS;
     }
     else {
         x1 = (-B - sqrt(D)) / (2*A);
@@ -136,7 +133,6 @@ vec2 intersectSphere(Ray ray, const Sphere s) {
 	float a = dot(ray.direction, ray.direction);
 	float b = 2 * dot(ray.direction, (ray.origin - s.center));
 	float c = dot((ray.origin - s.center), (ray.origin - s.center)) - r2;
-	float D = b * b - 4 * a * c;
     
     float t1, t2;
     solveQuadratic(a, b, c, t1, t2);
@@ -204,10 +200,6 @@ void findIntersect(Ray ray, inout Hitinfo hitInfo) {
 }
 
 
-
-
-
-
 bool isInShadow(Hitinfo hitInfo, vec3 intersectionPoint, Light light) {
     bool test = hitInfo.hit && hitInfo.t < distance(light.position, intersectionPoint);
     return test;
@@ -223,7 +215,7 @@ vec3 PhongShadingPerLight(Light light, vec3 intersectionPoint, vec3 normal, Hiti
     vec3 diffuse = diff * light.color;
 
     // specular
-    vec3 viewDir = normalize(eye - intersectionPoint);
+    vec3 viewDir = normalize(cameraPosition - intersectionPoint);
     vec3 reflectDir = reflect(-lightDir, normal);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
     vec3 specular = specularStrength * spec * light.color;
@@ -286,12 +278,14 @@ vec3 trace(Ray ray) {
 
 layout (local_size_x = 16, local_size_y = 8) in;
 void main(void) {
+    // Vypocet aktualne pocitaneho pixelu s vypocetem kolize s AABB
+    // https://github.com/LWJGL/lwjgl3-wiki/wiki/2.6.1.-Ray-tracing-with-OpenGL-Compute-Shaders-%28Part-I%29
     ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
     ivec2 size = imageSize(framebuffer);
     if (pixel.x >= size.x || pixel.y >= size.y) { return; }
-    vec2 pos = vec2(pixel) / vec2(size.x - 1, size.y - 1);
-    vec3 dir = mix(mix(ray00, ray01, pos.y), mix(ray10, ray11, pos.y), pos.x);
-    Ray ray = Ray(eye, dir);
+    vec2 position = vec2(pixel) / vec2(size.x , size.y);
+    vec3 direction = mix(mix(ray00, ray01, position.y), mix(ray10, ray11, position.y), position.x);
+    Ray ray = Ray(cameraPosition, direction);
     vec4 color = vec4(trace(ray), 0);
     imageStore(framebuffer, pixel, color);
 }
