@@ -50,6 +50,8 @@ SET(GRAPHICS_SHAPES_FILES
 
 set(UTIL_FILES
     src/util/ShaderReader.h src/util/ShaderReader.cpp
+    src/util/OrbitCamera.h src/util/OrbitCamera.cpp
+    src/util/PerspectiveCamera.h src/util/PerspectiveCamera.cpp
 )
 
 
